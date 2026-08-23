@@ -403,7 +403,7 @@ export default function App() {
   const dpiMaximum = isG305 || isModelO ? 12000 : 40000;
   const connected = Boolean(mouse?.connected);
   const connectionLabel = mouse?.pid === "0x5032" ? "USB-C (wired)" : mouse?.pid === "0x5031" ? "2.4 GHz receiver" : mouse?.connection || "Not reported";
-  const background: React.CSSProperties = bgMode === "solid" ? { background: bgColor } : bgMode === "gradient" ? { background: `linear-gradient(135deg, ${gradA}, ${gradB})` } : bgMode === "image" && bgImage ? { backgroundImage: `url(${bgImage})`, backgroundSize: fit === "stretch" ? "100% 100%" : fit, backgroundPosition: bgFocus, backgroundRepeat: "no-repeat" } : { background: "#101112" };
+  const background: React.CSSProperties = bgMode === "solid" ? { background: bgColor } : bgMode === "gradient" ? { background: `linear-gradient(135deg, ${gradA}, ${gradB})` } : bgMode === "image" && bgImage ? { backgroundImage: `url(${bgImage})`, backgroundSize: fit === "stretch" ? "100% 100%" : fit, backgroundPosition: bgFocus, backgroundRepeat: "no-repeat" } : { background: "radial-gradient(circle at 72% 0%, rgba(195, 113, 51, .18), transparent 34%), radial-gradient(circle at 6% 94%, rgba(105, 62, 42, .18), transparent 38%), linear-gradient(145deg, #100c0a 0%, #1b140f 50%, #110d0b 100%)" };
 
   const glassStyle = { "--glass-alpha": String(glassOpacity / 100), "--glass-blur": `${glassBlur}px`, "--glass-tint": glassTint, "--glass-border": String(glassBorder / 100), "--glass-radius": `${glassRadius}px`, "--text-scale": String(textScale / 100) } as React.CSSProperties;
   const changeTab = (next: Tab) => {

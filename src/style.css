@@ -216,3 +216,25 @@ html{scrollbar-color:rgba(220,226,233,.38) transparent;scrollbar-width:thin}*::-
 input[type=range]{accent-color:#e6a35c!important}
 .mouse-illustration img{filter:drop-shadow(0 24px 21px rgba(0,0,0,.46))!important}
 .name-setting{display:grid!important;gap:7px!important;max-width:350px!important;color:var(--cozy-muted)!important;font-size:13px!important}.name-setting input{width:100%!important;border:1px solid rgba(243,215,176,.2)!important;border-radius:12px!important;background:rgba(20,14,12,.62)!important;color:var(--cozy-text)!important;padding:12px 13px!important;font:inherit!important;outline:none!important}.name-setting input:focus{border-color:#dea064!important;box-shadow:0 0 0 3px rgba(222,160,100,.16)!important}.identity-section{margin-bottom:22px!important}
+
+
+/* Sidebar stability: keep navigation readable at every UI scale. */
+.ui-scale-layer{width:calc(100% / var(--ui-scale, 1));}
+.sidebar{
+  width:calc(252px / var(--ui-scale, 1))!important;
+  flex:0 0 calc(252px / var(--ui-scale, 1))!important;
+  min-height:calc(100vh / var(--ui-scale, 1))!important;
+  height:calc(100vh / var(--ui-scale, 1))!important;
+  overflow:hidden!important;
+  padding:18px 14px 14px!important;
+}
+.sidebar .brand{padding-bottom:20px!important}
+.sidebar-groups{gap:6px!important}
+.sidebar-group{padding-bottom:6px!important}
+.sidebar .nav-item{padding:9px 10px!important}
+.current-area{margin-top:auto!important;margin-bottom:11px!important;padding-top:10px!important}
+.current-area .current-setup{max-height:410px!important;overflow:hidden!important}
+.current-device-image{height:190px!important;min-height:150px!important;max-height:190px!important;margin:0 auto 8px!important}
+.sidebar .sidebar-device-card{margin:4px 0 0!important}
+.settings-nav{margin-top:0!important}
+.sidebar-footer{padding-top:7px!important}
