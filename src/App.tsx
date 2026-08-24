@@ -8,8 +8,7 @@ type BackgroundMode = "default" | "solid" | "gradient" | "image";
 type ImageFit = "cover" | "contain" | "stretch";
 type GlassMode = "regular" | "clear";
 type LocalMessage = { id: string; role: "user" | "assistant"; content: string };
-type AppNotification = { id: string; title: string; detail: string; aimTrial?: boolean };
-type TrainerMode = "Flick" | "Tracking" | "Reaction";
+type AppNotification = { id: string; title: string; detail: string };
 
 const tabs: { id: Tab; label: string; icon: typeof Mouse }[] = [
   { id: "overview", label: "Overview", icon: Mouse }, { id: "dashboard", label: "Device dashboard", icon: SlidersHorizontal },
@@ -171,7 +170,7 @@ export default function App() {
   const [activeNotification, setActiveNotification] = useState<AppNotification | null>(null);
   const [notificationLeaving, setNotificationLeaving] = useState(false);
   const activeProfile = profiles.find(candidate => candidate.id === profile) ?? profiles[0];
-  const notify = (title: string, detail: string, aimTrial = false) => setNotificationQueue(items => [...items, { id: crypto.randomUUID(), title, detail, aimTrial }].slice(-5));
+  const notify = (title: string, detail: string) => setNotificationQueue(items => [...items, { id: crypto.randomUUID(), title, detail }].slice(-5));
   const buttons = activeProfile?.buttons ?? defaultButtons;
 
   const [bgMode, setBgMode] = useState<BackgroundMode>(() => (localStorage.getItem("unnamed-bg-mode") as BackgroundMode) || "default");
@@ -196,16 +195,6 @@ export default function App() {
   const [watchedProgram, setWatchedProgram] = useState(() => localStorage.getItem("unnamed-watched-program") || "");
   const [autoSwitchProfile, setAutoSwitchProfile] = useState(() => localStorage.getItem("unnamed-auto-profile") || "");
   const [autoSwitchStatus, setAutoSwitchStatus] = useState("Not watching an app");
-  const [converterDpi, setConverterDpi] = useState(800);
-  const [converterSensitivity, setConverterSensitivity] = useState(1);
-  const [targetDpi, setTargetDpi] = useState(1600);
-  const [surfaceChecks, setSurfaceChecks] = useState<string[]>([]);
-  const [trainerMode, setTrainerMode] = useState<TrainerMode>("Flick");
-  const [trainerActive, setTrainerActive] = useState(false);
-  const [trainerScore, setTrainerScore] = useState(0);
-  const [trainerSeconds, setTrainerSeconds] = useState(30);
-  const [trainerTarget, setTrainerTarget] = useState({ x: 50, y: 50 });
-  const [trainerVisible, setTrainerVisible] = useState(false);
   const profileImportRef = useRef<HTMLInputElement>(null);
 
   const [glassMode, setGlassMode] = useState<GlassMode>(() => (localStorage.getItem("unnamed-glass-mode") as GlassMode) || "regular");
@@ -264,25 +253,6 @@ export default function App() {
     return () => { active = false; window.clearInterval(timer); };
   }, [autoSwitchEnabled, watchedProgram, autoSwitchProfile]);
 
-  useEffect(() => {
-    if (!trainerActive) return;
-    const clock = window.setInterval(() => setTrainerSeconds(seconds => {
-      if (seconds <= 1) { setTrainerActive(false); return 0; }
-      return seconds - 1;
-    }), 1000);
-    const targetSpeed = trainerMode === "Tracking" ? 620 : 1000;
-    const targets = window.setInterval(() => {
-      if (trainerMode !== "Flick") setTrainerTarget({ x: 12 + Math.random() * 76, y: 14 + Math.random() * 70 });
-    }, targetSpeed);
-    return () => { window.clearInterval(clock); window.clearInterval(targets); };
-  }, [trainerActive, trainerMode]);
-
-  useEffect(() => {
-    if (trainerActive || trainerSeconds !== 0) return;
-    const timer = window.setTimeout(() => setTrainerVisible(false), 450);
-    return () => window.clearTimeout(timer);
-  }, [trainerActive, trainerSeconds]);
-
   useEffect(() => { let active = true; void readBackground().then(image => { if (active) setBgImage(image); }).catch(() => undefined).finally(() => { if (active) setBackgroundReady(true); }); return () => { active = false; }; }, []);
   useEffect(() => { if (backgroundReady) void writeBackground(bgImage).catch(() => setError("Could not save that background image.")); }, [bgImage, backgroundReady]);
   useEffect(() => {
@@ -309,7 +279,7 @@ export default function App() {
   const refresh = useCallback(async () => { setLoading(true); setError(null); try { const [detectedMice, battery] = await Promise.all([invoke<MouseDevice[]>("detect_mice", { showHidden: showOtherDevices }), invoke<number | null>("get_x1_battery").catch(() => null)]); setMice(detectedMice); setBatteryLevel(battery); } catch (e) { setMice([]); setBatteryLevel(null); setError(e instanceof Error ? e.message : String(e)); } finally { setLoading(false); } }, [showOtherDevices]);
   useEffect(() => { void refresh(); }, [refresh]);
   useEffect(() => () => { if (dpiTimer.current) clearTimeout(dpiTimer.current); }, []);
-  const applyDpi = (value: number) => { if (value === dpi) return; setDpi(value); setProfiles(items => items.map(item => item.id === activeProfile?.id ? { ...item, dpi: value } : item)); setError(null); if (dpiTimer.current) clearTimeout(dpiTimer.current); dpiTimer.current = setTimeout(async () => { try { await invoke("set_dpi", { dpi: value }); notify("DPI changed", `Your mouse is now set to ${value} DPI.`, true); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } }, 420); };
+  const applyDpi = (value: number) => { if (value === dpi) return; setDpi(value); setProfiles(items => items.map(item => item.id === activeProfile?.id ? { ...item, dpi: value } : item)); setError(null); if (dpiTimer.current) clearTimeout(dpiTimer.current); dpiTimer.current = setTimeout(async () => { try { await invoke("set_dpi", { dpi: value }); notify("DPI changed", `Your mouse is now set to ${value} DPI.`); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } }, 420); };
   const setPollingForProfile = (value: string) => { setPolling(value); setProfiles(items => items.map(item => item.id === activeProfile?.id ? { ...item, polling: value } : item)); };
   const updateButton = (button: string, patch: Partial<ButtonBinding>) => setProfiles(items => items.map(item => item.id === activeProfile?.id ? { ...item, buttons: { ...item.buttons, [button]: { ...item.buttons[button], ...patch } } } : item));
   const askLocalAssistant = async () => {
@@ -379,18 +349,6 @@ export default function App() {
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Could not import that profile backup."); }
     finally { event.target.value = ""; }
   };
-  const recordSurfaceCheck = (label: string) => setSurfaceChecks(checks => checks.includes(label) ? checks : [...checks, label]);
-  const beginTrainer = () => {
-    setTrainerScore(0); setTrainerSeconds(30);
-    setTrainerTarget({ x: 12 + Math.random() * 76, y: 14 + Math.random() * 70 });
-    setTrainerActive(true);
-  };
-  const hitTrainerTarget = () => {
-    if (!trainerActive) return;
-    setTrainerScore(score => score + 1);
-    setTrainerTarget({ x: 12 + Math.random() * 76, y: 14 + Math.random() * 70 });
-  };
-
   const importBackground = async (event: React.ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; if (!/^image\/(png|jpeg|webp|gif)$/i.test(file.type)) return setError("Use PNG, JPG/JPEG, WebP, or GIF."); if (file.size > 40 * 1024 * 1024) return setError("Background images must be 40 MB or smaller."); setError(null); try { setBgImage(await prepareBackground(file)); setBgMode("image"); } catch (reason) { setError(reason instanceof Error ? reason.message : "Could not prepare that image."); } finally { event.target.value = ""; } };
   const resetAppearance = () => { setBgMode("default"); setBgImage(""); setBgFocus("center"); setBgOpacity(100); setBgBlur(0); setBgSaturation(100); setGlassMode("regular"); setGlassOpacity(64); setGlassBlur(22); setGlassTint("#15171B"); setGlassBorder(42); setGlassRadius(16); setUiScale(100); setTextScale(100); };
 
@@ -429,7 +387,7 @@ export default function App() {
         <div className="app-boot-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={bootProgress}><i style={{ width: `${bootProgress}%` }} /></div>
       </section>
     </div>}
-    <div className="notification-stack" aria-live="polite">{activeNotification && <article className={`app-notification glass-control ${notificationLeaving ? "leaving" : ""}`} key={activeNotification.id}><span>{activeNotification.title}</span><strong>{activeNotification.detail}</strong>{activeNotification.aimTrial && <div className="notification-actions"><button className="primary-button" onClick={() => { setActiveNotification(null); setNotificationLeaving(false); setTrainerSeconds(30); setTrainerVisible(true); }} type="button">Quick trial</button><button className="secondary-button" onClick={() => { setActiveNotification(null); setNotificationLeaving(false); }} type="button">Not now</button></div>}</article>}</div>
+    <div className="notification-stack" aria-live="polite">{activeNotification && <article className={`app-notification glass-control ${notificationLeaving ? "leaving" : ""}`} key={activeNotification.id}><span>{activeNotification.title}</span><strong>{activeNotification.detail}</strong></article>}</div>
     <div className="background-layer" style={{ ...background, opacity: bgMode === "default" ? 1 : bgOpacity / 100, filter: `${bgBlur ? `blur(${bgBlur}px) ` : ""}saturate(${bgSaturation}%)` }} />
     <div className="background-shade" />
     <div className="ui-scale-layer" style={{ "--ui-scale": uiScale / 100 } as React.CSSProperties}>
@@ -453,7 +411,6 @@ export default function App() {
         {tab === "performance" && <section className="panel page-panel glass-surface"><div className="section-heading compact"><div><h2>Performance</h2><p>Fine-tune sensitivity and responsiveness.</p></div></div><div className="performance-layout"><div className="performance-value"><span>Current DPI</span><DpiInput value={dpi} onApply={applyDpi} minimum={dpiMinimum} maximum={dpiMaximum}/><small>{isG305 ? "G305 range · 200–12,000 DPI." : isModelO ? "Model O range · 50–12,000 DPI." : "Hardware DPI control · 50–40,000 DPI."}</small></div><div className="performance-slider"><input className="big-range" type="range" min={dpiMinimum} max={dpiMaximum} step="50" value={dpi} onChange={e => applyDpi(Number(e.target.value))}/><div className="dpi-preset-row full">{dpiPresets.map(value => <button className={dpi === value ? "selected" : ""} key={value} onClick={() => applyDpi(value)} type="button">{value >= 1000 ? `${value / 1000}K` : value}</button>)}</div></div></div><div className="polling-options"><span>Polling rate</span>{["125 Hz","500 Hz","1000 Hz"].map(r => <button className={polling === r ? "selected" : ""} key={r} onClick={() => setPollingForProfile(r)} type="button">{r}</button>)}</div><div className="dpi-diagnostics"><button className="secondary-button glass-control" onClick={() => void inspectDpiHardware()} type="button">Collect DPI diagnostics</button><p>Read-only: this records the mouse’s HID interfaces and descriptor without changing its settings.</p>{dpiDiagnostics && <pre>{dpiDiagnostics}</pre>}</div></section>}
         {tab === "profiles" && <section className="panel page-panel glass-surface"><div className="section-heading compact"><div><h2>Profiles</h2><p>Create and switch saved DPI, polling, and button layouts.</p></div></div><div className="profile-create glass-control"><input value={newProfileName} placeholder="New profile name" onChange={e => setNewProfileName(e.target.value)} onKeyDown={e => e.key === "Enter" && createProfile()}/><button className="secondary-button" onClick={createProfile} type="button"><Plus size={15}/> Create profile</button></div><div className="profile-grid">{profiles.map(item => <div className={`profile-card glass-control ${activeProfile?.id === item.id ? "selected" : ""}`} key={item.id}><Gamepad2 size={19}/><strong>{item.name}</strong><span>{item.dpi} DPI · {item.polling}</span><div className="profile-card-actions"><button onClick={() => setProfile(item.id)} type="button">{activeProfile?.id === item.id ? "Active" : "Use"}</button><button onClick={() => renameProfile(item)} type="button">Rename</button><button className="danger-button" onClick={() => deleteProfile(item)} type="button" title="Delete profile"><Trash2 size={14}/></button></div></div>)}</div></section>}
         {tab === "profiles" && <section className="panel page-panel glass-surface folded-utilities"><div className="section-heading compact"><div><h2>Profile tools</h2><p>Keep your profiles organised and let them follow the apps you use.</p></div></div><div className="tools-grid compact-tools"><article className="tool-card glass-control"><h3>Auto-switch profiles</h3><p>Switch to a profile when a Windows app is running.</p><label className="toggle-row"><input type="checkbox" checked={autoSwitchEnabled} onChange={e => setAutoSwitchEnabled(e.target.checked)}/><span>Enable auto-switching</span></label><label>Program name<input value={watchedProgram} placeholder="e.g. game.exe" onChange={e => setWatchedProgram(e.target.value)}/></label><label>Use profile<select value={autoSwitchProfile} onChange={e => setAutoSwitchProfile(e.target.value)}><option value="">Choose a profile</option>{profiles.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><small>{autoSwitchStatus}</small></article><article className="tool-card glass-control"><h3>Profile backup</h3><p>Move profiles between PCs or keep a backup.</p><div className="tool-actions"><button className="secondary-button" onClick={exportProfiles} type="button">Export profiles</button><button className="secondary-button" onClick={() => profileImportRef.current?.click()} type="button">Import profiles</button><input ref={profileImportRef} className="file-input" type="file" accept="application/json" onChange={importProfiles}/></div><small>Imports replace the current local profile list.</small></article></div></section>}
-        {trainerVisible && <div className="trainer-modal" role="dialog" aria-modal="true" aria-label="Quick aim trial"><section className="panel page-panel glass-surface trainer-panel"><button className="trainer-close" onClick={() => { setTrainerActive(false); setTrainerSeconds(30); setTrainerVisible(false); }} type="button" aria-label="Close aim trial">×</button><div className="section-heading compact"><div><h2>Quick aim trial</h2><p>A standalone 30-second practice space for your current DPI.</p></div><span className="trainer-dpi">{dpi} DPI</span></div><div className="trainer-mode-row">{(["Flick","Tracking","Reaction"] as TrainerMode[]).map(mode => <button className={trainerMode === mode ? "selected" : ""} onClick={() => { setTrainerMode(mode); setTrainerActive(false); }} key={mode} type="button"><b>{mode}</b><span>{mode === "Flick" ? "Fast target clicks" : mode === "Tracking" ? "Moving target practice" : "Quick response"}</span></button>)}</div><div className="trainer-stage"><div className="trainer-score"><span>Hits <b>{trainerScore}</b></span><span>Time <b>{trainerSeconds}s</b></span></div>{trainerActive ? <button className="trainer-target" onClick={hitTrainerTarget} style={{ left: `${trainerTarget.x}%`, top: `${trainerTarget.y}%` }} type="button" aria-label="Aim target" /> : <div className="trainer-start"><strong>{trainerSeconds === 0 ? `${trainerScore} hits — nice run.` : "Ready when you are."}</strong><span>Click the targets as quickly as you can.</span><button className="primary-button" onClick={beginTrainer} type="button">Start 30-second trial</button></div>}</div><p className="trainer-note">Practice happens only inside Unnamed. It does not read, modify, or automate any game.</p></section></div>}
         {tab === "tools" && <section className="panel page-panel glass-surface tools-panel"><div className="section-heading compact"><div><h2>Tools</h2><p>Useful extras for profiles, sensitivity, and hardware checks.</p></div></div><div className="tools-grid">
           <article className="tool-card glass-control"><h3>Auto-switch profiles</h3><p>Switch to a profile when a Windows app is running.</p><label className="toggle-row"><input type="checkbox" checked={autoSwitchEnabled} onChange={e => setAutoSwitchEnabled(e.target.checked)}/><span>Enable auto-switching</span></label><label>Program name<input value={watchedProgram} placeholder="e.g. Valorant-Win64-Shipping.exe" onChange={e => setWatchedProgram(e.target.value)}/></label><label>Use profile<select value={autoSwitchProfile} onChange={e => setAutoSwitchProfile(e.target.value)}><option value="">Choose a profile</option>{profiles.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><small>{autoSwitchStatus}</small></article>
           <article className="tool-card glass-control"><h3>DPI converter</h3><p>Keep the same effective sensitivity when changing DPI.</p><div className="converter-grid"><label>Current DPI<input type="number" min="50" value={converterDpi} onChange={e => setConverterDpi(Math.max(50, Number(e.target.value) || 50))}/></label><label>Current sensitivity<input type="number" min="0.001" step="0.01" value={converterSensitivity} onChange={e => setConverterSensitivity(Math.max(.001, Number(e.target.value) || .001))}/></label><label>New DPI<input type="number" min="50" value={targetDpi} onChange={e => setTargetDpi(Math.max(50, Number(e.target.value) || 50))}/></label></div><div className="converter-result"><span>New sensitivity</span><strong>{(converterDpi * converterSensitivity / targetDpi).toFixed(3)}</strong></div></article>
