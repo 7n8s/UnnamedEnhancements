@@ -90,8 +90,8 @@ jobs:
       - name: Publish stable release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.2.3
-          name: Unnamed Enhancements v0.2.3
+          tag_name: v0.2.4
+          name: Unnamed Enhancements v0.2.4
           prerelease: false
           make_latest: true
           overwrite_files: true

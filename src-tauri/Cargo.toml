@@ -1,6 +1,6 @@
 [package]
 name = "unnamed-desktop-app"
-version = "0.2.3"
+version = "0.2.4"
 description = "Unnamed Windows Desktop App"
 authors = ["7n8s"]
 edition = "2021"
