@@ -332,3 +332,21 @@ textarea{line-height:1.5!important}
  .page-panel{padding:20px!important}
  .topbar{gap:16px!important}
 }
+
+
+/* Tactile sidebar channels */
+.sidebar .nav-item{
+  transform-origin:left center!important;
+  will-change:transform!important;
+}
+.sidebar .nav-item:hover{
+  transform:translateX(4px) scale(1.035)!important;
+  z-index:2!important;
+  box-shadow:0 10px 24px rgba(0,0,0,.24),inset 3px 0 0 var(--cozy-accent)!important;
+}
+.sidebar .nav-item.active{
+  transform:translateX(2px) scale(1.018)!important;
+  box-shadow:0 8px 22px rgba(0,0,0,.20),inset 3px 0 0 var(--cozy-accent)!important;
+}
+.sidebar .nav-item.active:hover{transform:translateX(5px) scale(1.04)!important}
+@media(prefers-reduced-motion:reduce){.sidebar .nav-item,.sidebar .nav-item:hover,.sidebar .nav-item.active{transform:none!important}}
