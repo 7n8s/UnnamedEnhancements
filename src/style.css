@@ -191,7 +191,7 @@ html{scrollbar-color:rgba(220,226,233,.38) transparent;scrollbar-width:thin}*::-
 
 .current-area{display:grid;grid-template-rows:auto auto;flex:0 0 auto;gap:10px;min-height:0;margin:2px 4px 18px;padding:11px 0 0;border-top:1px solid rgba(255,255,255,.08)}.current-area>.sidebar-section-label{margin:0}.current-area .current-setup{display:flex;flex-direction:column;align-items:stretch;min-height:0;margin:0}.current-area .sidebar-device-card{margin-top:auto;margin-bottom:0}.current-device-image{display:block;width:min(208px,100%);height:310px;max-height:310px;min-height:285px;object-fit:contain;margin:3px auto 12px;filter:drop-shadow(0 13px 18px rgba(0,0,0,.28));opacity:.98;animation:current-device-image-mix .7s cubic-bezier(.16,1,.3,1) both}.current-setup{display:grid;gap:6px;margin:12px 4px 8px;padding:12px;border:1px solid rgba(255,255,255,.12);border-radius:13px;background:rgba(10,13,18,.34)}.current-setup>span{color:#87919c;font-size:9px;text-transform:uppercase;letter-spacing:.09em}.current-setup>strong{font-size:12px;color:#f0f2f5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.current-setup>div{display:flex;gap:7px}.current-setup b{padding:4px 6px;border:1px solid rgba(255,255,255,.1);border-radius:7px;color:#d7dce1;font-size:9px;font-weight:600}.current-setup small{color:#8c96a0;font-size:9px}.current-setup button{justify-self:start;padding:0;border:0;background:none;color:#cbd1d7;font-size:10px;cursor:pointer}.current-setup button:hover{color:#fff;text-decoration:underline}
 
-.settings-nav{margin:24px 0 10px}.button-map-image{animation:mouse-image-mix .7s cubic-bezier(.16,1,.3,1) both}@keyframes current-device-image-mix{from{opacity:0;transform:scale(1.13);filter:blur(5px)}to{opacity:1;transform:scale(1.28);filter:blur(0)}}@keyframes mouse-image-mix{from{opacity:0;transform:scale(.975);filter:blur(5px)}to{opacity:1;transform:scale(1);filter:blur(0)}}@media(prefers-reduced-motion:reduce){.current-device-image,.button-map-image{animation-duration:.01ms}}
+.settings-nav{margin:24px 0 10px}.button-map-image{animation:mouse-image-mix .7s cubic-bezier(.16,1,.3,1) both}@keyframes current-device-image-mix{from{opacity:0;transform:scale(1.06);filter:blur(5px)}to{opacity:1;transform:scale(1);filter:blur(0)}}@keyframes mouse-image-mix{from{opacity:0;transform:scale(.975);filter:blur(5px)}to{opacity:1;transform:scale(1);filter:blur(0)}}@media(prefers-reduced-motion:reduce){.current-device-image,.button-map-image{animation-duration:.01ms}}
 .battery-readout{display:inline-flex;align-items:center;gap:4px;margin-top:2px;color:#bfe9d0;font-size:9px;font-weight:600}.battery-readout::before{content:"";width:5px;height:5px;border-radius:50%;background:#bfe9d0;box-shadow:0 0 8px rgba(191,233,208,.6)}
 
 /* Cozy dashboard redesign */
@@ -238,3 +238,17 @@ input[type=range]{accent-color:#e6a35c!important}
 .sidebar .sidebar-device-card{margin:4px 0 0!important}
 .settings-nav{margin-top:0!important}
 .sidebar-footer{padding-top:7px!important}
+
+
+/* Final cozy polish */
+.current-setup>button:not(.icon-button){
+  position:relative!important; z-index:2!important;
+  margin:3px 0 18px!important; padding:0 0 3px!important;
+  line-height:1.25!important;
+}
+.current-device-image{position:relative!important;z-index:1!important;transform:none!important}
+.current-setup{background:linear-gradient(145deg,rgba(34,26,22,.94),rgba(21,17,15,.88))!important}
+.current-setup .sidebar-device-card{background:linear-gradient(135deg,rgba(88,54,31,.40),rgba(27,19,15,.84))!important;border-color:rgba(234,175,104,.23)!important}
+.setting-card,.device-hero{transition:transform .22s ease, border-color .22s ease, box-shadow .22s ease}
+.setting-card:hover{transform:translateY(-2px);border-color:rgba(242,183,112,.26)!important;box-shadow:0 20px 48px rgba(0,0,0,.3),inset 0 1px rgba(255,237,210,.07)!important}
+.topbar-actions .profile-select{min-width:132px!important}
