@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<meta charset="UTF-8">
+<title>X1 mapping regression checks</title>
+<style>
+  body { margin: 0; background: #161a1c; color: #eee; font: 14px monospace; }
+  #fixture { position: absolute; left: 16px; top: 16px; }
+  .mouse-map-artwork { display: block; width: 100%; height: 100%; }
+  .mouse-hit-zone { fill: transparent; pointer-events: fill; }
+  #result { position: fixed; top: 450px; padding: 16px; white-space: pre-wrap; }
+</style>
+<div id="fixture"></div><pre id="result">Running…</pre>
+<script type="module">
+  import React from "react";
+  import { createRoot } from "react-dom/client";
+  import { flushSync } from "react-dom";
+  import MouseArtwork from "../src/MouseArtwork.tsx";
+  import { mouseDrawings } from "../src/mouseGeometry.ts";
+
+  const fixture = document.querySelector("#fixture");
+  const root = createRoot(fixture);
+  const result = document.querySelector("#result");
+  const failures = [];
+  let checks = 0;
+  const check = (condition, label) => { checks++; if (!condition) failures.push(label); };
+  const cases = [
+    { side: false, key: "x1", probes: [
+      [480, 250, "Button 1"], [760, 250, "Button 2"], [620, 260, "Button 3"],
+      [343, 490, "Button 4"], [346, 680, "Button 5"],
+      [580, 270, null], [660, 270, null], [619, 475, null], [620, 596, null],
+      [620, 120, null], [450, 585, null], [790, 585, null]
+    ] },
+    { side: true, key: "x1-side", probes: [
+      [470, 207, "Button 4"], [650, 205, "Button 5"],
+      [562, 210, null], [470, 250, null], [650, 250, null], [800, 280, null]
+    ] }
+  ];
+
+  for (const test of cases) {
+    for (const [width, height] of [[350,350], [220,280], [430,350]]) {
+      fixture.style.width = width + "px";
+      fixture.style.height = height + "px";
+      let selected = "";
+      flushSync(() => root.render(React.createElement(MouseArtwork, {
+        side: test.side, selected: "Button 1", onSelect: button => { selected = button; }
+      })));
+      const svg = fixture.querySelector("svg");
+      const paths = [...svg.querySelectorAll(".mouse-hit-zone")];
+      const drawing = mouseDrawings[test.key];
+      check(svg.viewBox.baseVal.width === drawing.width && svg.viewBox.baseVal.height === drawing.height,
+        test.key + ": original image coordinate system");
+      const matrix = svg.getScreenCTM();
+      check(Math.abs(matrix.a - matrix.d) < 0.00001, test.key + ": uniform scale");
+      for (const [x,y,expected] of test.probes) {
+        const hits = paths.filter(path => path.isPointInFill({ x, y }));
+        const actual = hits.map(path => path.dataset.button);
+        check(actual.length === (expected ? 1 : 0) && (!expected || actual[0] === expected),
+          test.key + ": geometry at " + x + "," + y);
+        const point = new DOMPoint(x,y).matrixTransform(matrix);
+        const target = document.elementFromPoint(point.x,point.y);
+        check((target?.dataset.button || null) === expected,
+          test.key + ": browser hit target at " + x + "," + y + " in " + width + "x" + height);
+        if (expected && target) {
+          selected = "";
+          target.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+          check(selected === expected, test.key + ": selection callback");
+        }
+      }
+      for (const path of paths) {
+        selected = "";
+        path.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+        check(selected === path.dataset.button, test.key + ": keyboard selection");
+        const clip = path.getAttribute("clip-path");
+        const clipPath = svg.querySelector(clip.slice(4, -1) + " path");
+        check(clipPath?.getAttribute("d") === path.getAttribute("d"),
+          test.key + ": highlight stroke clipped inside outline");
+      }
+      if (width === 350) {
+        let overlaps = 0;
+        for (let x=0; x<drawing.width; x+=2) {
+          for (let y=0; y<drawing.height; y+=2) {
+            if (paths.filter(path => path.isPointInFill({x,y})).length > 1) overlaps++;
+          }
+        }
+        check(overlaps === 0, test.key + ": no overlapping button paths");
+      }
+    }
+  }
+  result.textContent = failures.length
+    ? "FAIL: " + failures.length + "/" + checks + "\n" + failures.join("\n")
+    : "PASS: " + checks + " checks. X1 top/side outlines, wheel housing, seams, LED, keyboard selection and scaled hit targets.";
+</script>
+</html>

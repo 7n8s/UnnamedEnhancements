@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import MouseArtwork from "./MouseArtwork";
 import { ArrowDownToLine, ArrowRight, Bot, Check, ChevronRight, CircleHelp, Gauge, Gamepad2, Keyboard, Mouse, Palette, Play, Plus, RefreshCw, SendHorizontal, Settings, ShieldCheck, SlidersHorizontal, Trash2, Upload, X } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
@@ -448,7 +449,7 @@ export default function App() {
         <div className="sidebar-bottom">
           <button className="current-device" onClick={() => changeTab("overview")} aria-label="Show current device">{connected ? <img src={deviceImage} alt=""/> : <Mouse size={30}/>}<span><small><i className={"device-dot "+(connected ? "online" : "")}/>{connected ? "CONNECTED" : "NO DEVICE"}</small><strong>{mouse?.name || "Connect your mouse"}</strong><em>{connected ? connectionLabel : "USB or wireless receiver"}</em></span></button>
           <button className={"nav-item settings-nav "+(tab === "settings" ? "active" : "")} onClick={() => changeTab("settings")} aria-current={tab === "settings" ? "page" : undefined}><Settings size={18}/><span>Appearance</span><ChevronRight size={14}/></button>
-          <div className="sidebar-footer"><span>Made for your everyday.</span><span>v0.3.0</span></div>
+          <div className="sidebar-footer"><span>Made for your everyday.</span><span>v0.3.1</span></div>
         </div>
       </aside>
       <main className="content" id="main-content">
@@ -476,7 +477,7 @@ export default function App() {
         {tab === "buttons" && <>
           <section className="panel button-workspace">
             <div className="mouse-button-map"><div className="card-heading"><div><span className="eyebrow">POINT & PERSONALISE</span><h2>{mouse?.name || "Button layout"}</h2></div><span className="subtle-badge">{sideButtonView ? "Side view" : "Top view"}</span></div>
-              <div className={"mouse-map-canvas "+(isG305 ? "g305-map" : isModelO ? "model-o-map" : "x1-map")+(sideButtonView ? " side-view-map" : "")}><img className="button-map-image" key={buttonMapImage} src={buttonMapImage} alt={sideButtonView ? "Mouse side view" : "Mouse top view"}/>{mouseHotspots.filter(zone => deviceButtons.includes(zone.button) && (!sideButtonView || ["Button 4","Button 5"].includes(zone.button))).map(zone => <button className={zone.className+" "+(selectedButton === zone.button ? "selected" : "")} key={zone.button} onClick={() => setSelectedButton(zone.button)} aria-pressed={selectedButton === zone.button} aria-label={"Select "+zone.label}/>)}</div>
+              <div className={"mouse-map-canvas "+(isG305 ? "g305-map" : isModelO ? "model-o-map" : "x1-map")+(sideButtonView ? " side-view-map" : "")}>{isX1 ? <MouseArtwork key={sideButtonView ? "side" : "top"} side={sideButtonView} selected={selectedButton} onSelect={setSelectedButton}/> : <><img className="button-map-image" key={buttonMapImage} src={buttonMapImage} alt={sideButtonView ? "Mouse side view" : "Mouse top view"}/>{mouseHotspots.filter(zone => deviceButtons.includes(zone.button) && (!sideButtonView || ["Button 4","Button 5"].includes(zone.button))).map(zone => <button className={zone.className+" "+(selectedButton === zone.button ? "selected" : "")} key={zone.button} onClick={() => setSelectedButton(zone.button)} aria-pressed={selectedButton === zone.button} aria-label={"Select "+zone.label}/>)}</>}</div>
               <p className="map-instruction">Select a button on the mouse or in the list below.</p><div className="button-selector">{deviceButtons.map(button => <button className={selectedButton === button ? "selected" : ""} onClick={() => setSelectedButton(button)} aria-pressed={selectedButton === button} key={button}><b>{button.replace("Button ","M")}</b><span>{buttonLabel(button)}</span></button>)}</div>
             </div>
             {(() => { const binding = buttons[selectedButton] || { action: "Default" as ButtonAction }; return <div className="button-editor"><span className="eyebrow">BUTTON ASSIGNMENT</span><h2>{buttonLabel(selectedButton)}</h2><p className="editor-intro">{canRemap ? "A small shortcut. A little time back." : "This button keeps its native mouse action."}</p>
