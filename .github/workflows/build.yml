@@ -74,8 +74,7 @@ jobs:
       - name: Prepare release executable
         shell: pwsh
         run: |
-          $app = Get-ChildItem "src-tauri/target/release" -Filter "*.exe" | Select-Object -First 1
-          if (-not $app) { throw "Portable app executable was not created." }
+          $app = Get-Item -LiteralPath "src-tauri/target/release/unnamed-desktop-app.exe" -ErrorAction Stop
           New-Item -ItemType Directory -Force -Path "release" | Out-Null
           Copy-Item -LiteralPath $app.FullName -Destination "release/UnnamedEnhancements.exe"
 
@@ -90,8 +89,10 @@ jobs:
       - name: Publish stable release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.2.6
-          name: Unnamed Enhancements v0.2.6
+          tag_name: v0.3.0
+          name: Unnamed Enhancements v0.3.0
+          target_commitish: ${{ inputs.branch || github.sha }}
+          body_path: RELEASE_NOTES.md
           prerelease: false
           make_latest: true
           overwrite_files: true
