@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "npm run dev:downloader",
     "beforeBuildCommand": "npm run build:downloader",
-    "devUrl": "http://localhost:5173/downloader.html",
+    "devUrl": "http://localhost:1420/downloader.html",
     "frontendDist": "../dist"
   },
   "app": {
