@@ -228,15 +228,9 @@ fn set_deathadder_dpi(product_id: u16, dpi: u16) -> Result<(), String> {
     let api = HidApi::new().map_err(|error| format!("Could not initialize HID: {error}"))?;
     let device = deathadder_handle(&api, product_id)?;
     let report = build_razer_dpi_report(0x05, dpi);
-    let sent = device
+    device
         .send_feature_report(&report)
         .map_err(|error| format!("Could not send the DPI command to the DeathAdder: {error}"))?;
-
-    if sent != RAZER_REPORT_LEN {
-        return Err(format!(
-            "The DeathAdder accepted only {sent} of {RAZER_REPORT_LEN} DPI report bytes."
-        ));
-    }
 
     // OpenRGB uses the successful HID SetFeature result as completion for
     // write commands. A short pause prevents a following profile update from
