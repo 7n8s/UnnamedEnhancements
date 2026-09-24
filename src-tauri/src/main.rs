@@ -76,12 +76,25 @@ fn get_x1_battery() -> Result<Option<u8>, String> {
 }
 
 #[tauri::command]
-fn set_dpi(dpi: u16) -> Result<(), String> {
+fn get_dpi(vid: Option<String>, pid: Option<String>) -> Result<Option<u16>, String> {
     #[cfg(target_os = "windows")]
-    { dpi::set_dpi(dpi) }
+    {
+        dpi::get_dpi(vid.as_deref(), pid.as_deref())
+    }
     #[cfg(not(target_os = "windows"))]
     {
-        let _ = dpi;
+        let _ = (vid, pid);
+        Ok(None)
+    }
+}
+
+#[tauri::command]
+fn set_dpi(dpi: u16, vid: Option<String>, pid: Option<String>) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    { dpi::set_dpi(dpi, vid.as_deref(), pid.as_deref()) }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = (dpi, vid, pid);
         Err("DPI control is currently available on Windows only.".to_string())
     }
 }
@@ -157,7 +170,6 @@ fn apply_known_mouse_identity(mouse: &mut MouseDevice) {
         )
     {
         // Original, white-edition, and 2021 DeathAdder Essential revisions.
-        // Detection only: do not send unverified Razer feature reports.
         mouse.name = "Razer DeathAdder Essential".to_string();
         mouse.manufacturer = Some("Razer".to_string());
         mouse.connection = "Wired USB".to_string();
@@ -426,7 +438,7 @@ fn main() {
     tauri::Builder::default()
         .manage(TrayState { minimize_to_tray: AtomicBool::new(false) })
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![detect_mice, inspect_dpi_hardware, get_x1_battery, set_dpi, set_minimize_to_tray, test_button_action, apply_button_mappings, download_latest_app])
+        .invoke_handler(tauri::generate_handler![detect_mice, inspect_dpi_hardware, get_x1_battery, get_dpi, set_dpi, set_minimize_to_tray, test_button_action, apply_button_mappings, download_latest_app])
         .on_tray_icon_event(|tray, event| match event {
             TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } => {
                 if let Some(window) = tray.app_handle().get_webview_window("main") {

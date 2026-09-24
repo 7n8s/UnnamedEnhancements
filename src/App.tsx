@@ -197,11 +197,12 @@ export default function App() {
   const deviceImage = isG305 ? "/assets/logitech/g305-top.png" : isModelO ? "/assets/glorious/model-o-wired-top.png" : isDeathAdder ? "/assets/razer/deathadder-essential-top.png" : "/assets/x1/attack-shark-x1-top.png";
   const sideButtonView = isX1 && (selectedButton === "Button 4" || selectedButton === "Button 5");
   const buttonMapImage = sideButtonView ? "/assets/x1/attack-shark-x1-side.png" : deviceImage;
-  const dpiMinimum = isG305 ? 200 : 50;
+  const dpiMinimum = isDeathAdder ? 100 : isG305 ? 200 : 50;
   const dpiMaximum = isDeathAdder ? 6400 : isG305 || isModelO ? 12000 : 40000;
   const connected = Boolean(mouse?.connected);
   const connectionLabel = mouse?.pid === "0x5032" ? "USB-C (wired)" : mouse?.pid === "0x5031" ? "2.4 GHz receiver" : mouse?.connection || "Not reported";
-  const canChangeDpi = connected && isX1;
+  const canChangeDpi = connected && (isX1 || isDeathAdder);
+  const dpiDeviceName = isDeathAdder ? "DeathAdder" : "X1";
   const canRemap = selectedButton === "Button 4" || selectedButton === "Button 5";
   const currentTab = tabs.find(item => item.id === tab)!;
   const hour = new Date().getHours();
@@ -261,15 +262,15 @@ export default function App() {
     setDpiStatus("Saved in this profile");
     let cancelled = false;
     if (canChangeDpi) {
-      void invoke("set_dpi", { dpi: activeProfile.dpi }).then(() => {
+      void invoke("set_dpi", { dpi: activeProfile.dpi, vid: mouse?.vid ?? null, pid: mouse?.pid ?? null }).then(() => {
         if (cancelled) return;
-        setDpiStatus("Applied to your X1");
+        setDpiStatus(`Applied to your ${dpiDeviceName}`);
         if (changed) notify("Profile applied", `${activeProfile.name} has been applied.`);
       }).catch(reason => { if (!cancelled) { setDpiStatus("Could not apply"); setError(String(reason)); } });
     } else if (changed) notify("Profile selected", `${activeProfile.name} is now active. Hardware DPI is unavailable for this device.`);
     return () => { cancelled = true; };
     // Apply only on device/profile changes, not each slider movement or rename.
-  }, [activeProfile?.id, canChangeDpi]);
+  }, [activeProfile?.id, canChangeDpi, mouse?.id]);
 
   useEffect(() => {
     if (!connected) return;
@@ -292,7 +293,7 @@ export default function App() {
     setError(null);
     if (dpiTimer.current) clearTimeout(dpiTimer.current);
     dpiTimer.current = setTimeout(async () => {
-      try { await invoke("set_dpi", { dpi: next }); setDpiStatus("Applied to your X1"); notify("DPI changed", `Your mouse is now set to ${next.toLocaleString()} DPI.`); }
+      try { await invoke("set_dpi", { dpi: next, vid: mouse?.vid ?? null, pid: mouse?.pid ?? null }); setDpiStatus(`Applied to your ${dpiDeviceName}`); notify("DPI changed", `Your mouse is now set to ${next.toLocaleString()} DPI.`); }
       catch (reason) { setDpiStatus("Could not apply"); setError(String(reason)); }
     }, 420);
   };
@@ -388,7 +389,7 @@ export default function App() {
         <div className="sidebar-bottom">
           <button className="current-device" onClick={() => changeTab("overview")} aria-label="Show current device">{connected ? <img src={deviceImage} alt=""/> : <Mouse size={30}/>}<span><small><i className={"device-dot "+(connected ? "online" : "")}/>{connected ? "CONNECTED" : "NO DEVICE"}</small><strong>{mouse?.name || "Connect your mouse"}</strong><em>{connected ? connectionLabel : "USB or wireless receiver"}</em></span></button>
           <button className={"nav-item settings-nav "+(tab === "settings" ? "active" : "")} onClick={() => changeTab("settings")} aria-current={tab === "settings" ? "page" : undefined}><Settings size={18}/><span>Appearance</span><ChevronRight size={14}/></button>
-          <div className="sidebar-footer"><span>Made for your everyday.</span><span>v0.3.3</span></div>
+          <div className="sidebar-footer"><span>Made for your everyday.</span><span>v0.3.4</span></div>
         </div>
       </aside>
       <main className="content" id="main-content">
@@ -407,7 +408,7 @@ export default function App() {
           <div className="overview-grid">
             <section className="panel quick-dpi"><div className="card-heading"><span className="icon-tile"><Gauge size={20}/></span><div><h3>Find your pace</h3><p>Sensitivity, made simple.</p></div><button className="icon-button" aria-label="Open DPI settings" onClick={() => changeTab("performance")}><ArrowRight size={18}/></button></div>
               <fieldset disabled={!canChangeDpi} className="dpi-field"><DpiInput value={dpi} onApply={applyDpi} minimum={dpiMinimum} maximum={dpiMaximum}/><input aria-label="Quick DPI" type="range" min={dpiMinimum} max={dpiMaximum} step="50" value={dpi} onChange={e => applyDpi(Number(e.target.value))}/><div className="range-ends"><span>Slower movement</span><span>Faster movement</span></div><div className="dpi-preset-row">{dpiPresets.slice(0,4).map(value => <button className={dpi === value ? "selected" : ""} aria-pressed={dpi === value} key={value} onClick={() => applyDpi(value)}>{value.toLocaleString()}</button>)}</div></fieldset>
-              <p className="footnote">{canChangeDpi ? dpiStatus : connected ? "Hardware DPI control is currently supported on the X1 only." : "Connect an X1 to adjust hardware DPI."}</p>
+              <p className="footnote">{canChangeDpi ? dpiStatus : connected ? "Hardware DPI control is available for the X1 and DeathAdder Essential." : "Connect a supported mouse to adjust hardware DPI."}</p>
             </section>
             <section className="panel overview-profile"><span className="icon-tile"><Gamepad2 size={20}/></span><span className="eyebrow">PICK UP WHERE YOU LEFT OFF</span><h3>{activeProfile?.name || "Default"}</h3><p>Your DPI and shortcuts, kept together. Create a different setup for work, play, or anything in between.</p><div className="profile-tags"><span>{dpi.toLocaleString()} DPI saved</span><span>{Object.values(buttons).filter(b => !["Default","Back","Forward"].includes(b.action)).length} custom actions</span></div><button className="text-button" onClick={() => changeTab("profiles")}>Manage profiles <ArrowRight size={16}/></button></section>
           </div>
@@ -433,7 +434,7 @@ export default function App() {
         {tab === "performance" && <>
           <section className="panel sensitivity-panel"><div className="card-heading"><span className="icon-tile"><Gauge size={21}/></span><div><h2>Your sensitivity</h2><p>{canChangeDpi ? "Applied directly to your Attack Shark X1." : "Hardware adjustment is available for Attack Shark X1."}</p></div><span className="subtle-badge">{canChangeDpi ? "Hardware control" : "Unavailable"}</span></div>
             <fieldset disabled={!canChangeDpi} className="dpi-field performance-field"><div className="dpi-value-row"><div><span className="field-caption">PROFILE DPI</span><DpiInput value={dpi} onApply={applyDpi} minimum={dpiMinimum} maximum={dpiMaximum}/></div><p>Higher DPI moves the pointer farther for the same hand movement. Lower DPI gives you more room for small adjustments.</p></div><div className="sensitivity-track"><input aria-label="Mouse DPI" type="range" min={dpiMinimum} max={dpiMaximum} step="50" value={dpi} onChange={e => applyDpi(Number(e.target.value))}/><div className="range-ends"><span>{dpiMinimum} DPI <small>More hand movement</small></span><span>{dpiMaximum.toLocaleString()} DPI <small>Less hand movement</small></span></div></div><span className="field-caption">START WITH A PRESET</span><div className="dpi-preset-row full">{dpiPresets.filter(value => value >= dpiMinimum && value <= dpiMaximum).map(value => <button className={dpi === value ? "selected" : ""} key={value} aria-pressed={dpi === value} onClick={() => applyDpi(value)}>{value.toLocaleString()}<small>DPI</small></button>)}</div></fieldset>
-            <div className="save-status"><Check size={15}/>{canChangeDpi ? dpiStatus : connected ? "This mouse is detected, but its DPI protocol is not verified. Use its manufacturer software." : "Connect your X1 to change DPI."}</div>
+            <div className="save-status"><Check size={15}/>{canChangeDpi ? dpiStatus : connected ? "This mouse is detected, but hardware DPI control is not available for it." : "Connect a supported mouse to change DPI."}</div>
           </section>
           <div className="insight-grid"><article className="panel"><span className="eyebrow">SMALL CHANGES HELP</span><h3>Start somewhere familiar.</h3><p>Try 800 or 1,600 DPI, then make small adjustments. The best value is the one that feels comfortable for your hand and desk space.</p></article><article className="panel"><span className="eyebrow">A NOTE ON SENSITIVITY</span><h3>Your game has a say, too.</h3><p>DPI works alongside your Windows and in-game sensitivity. Keep those settings steady while finding your preferred DPI.</p></article></div>
         </>}
@@ -449,10 +450,10 @@ export default function App() {
           <section className="panel help-panel"><div className="card-heading"><div><h2>A few helpful answers</h2><p>The essentials, without the manual.</p></div><CircleHelp size={23}/></div>
           <div className="help-sections">
             <div className="help-section"><h3>Getting started</h3>
-              {[["My mouse isn't showing up", "Connect the USB cable or 2.4 GHz receiver, then scan from Overview. The X1 reports USB-C when wired and 2.4 GHz when using its receiver."], ["How do I change DPI?", "Open DPI & sensitivity. Type a number and press Enter, choose a preset, or move the slider. The X1 update is sent after you stop adjusting."]].map(([title,body]) => <details className="help-answer" key={title}><summary>{title}<Plus size={17}/></summary><p>{body}</p></details>)}
+              {[["My mouse isn't showing up", "Connect the USB cable or 2.4 GHz receiver, then scan from Overview. The X1 reports USB-C when wired and 2.4 GHz when using its receiver."], ["How do I change DPI?", "Open DPI & sensitivity. Type a number and press Enter, choose a preset, or move the slider. The update is sent after you stop adjusting."]].map(([title,body]) => <details className="help-answer" key={title}><summary>{title}<Plus size={17}/></summary><p>{body}</p></details>)}
             </div>
             <div className="help-section"><h3>Customising</h3>
-              {[["What can Unnamed control?", "Attack Shark X1 hardware DPI is supported. Razer DeathAdder Essential, Logitech G305/G304, and Glorious Model O Wired have detection and matching layouts. Native main-button remapping, polling rate, RGB, and live battery reporting are not verified."], ["How do shortcuts work?", "Select M4 or M5 in Buttons, then choose an action. Default keeps the existing mouse action. Keyboard shortcuts go to the focused app."], ["Where are my profiles and backgrounds?", "They stay on this PC and survive app updates. Profiles → Backup & restore exports a portable copy. Appearance controls saved images or GIFs, colours, glass, and scale."]].map(([title,body]) => <details className="help-answer" key={title}><summary>{title}<Plus size={17}/></summary><p>{body}</p></details>)}
+              {[["What can Unnamed control?", "Attack Shark X1 and Razer DeathAdder Essential hardware DPI are supported. Logitech G305/G304 and Glorious Model O Wired have detection and matching layouts. Native main-button remapping, polling rate, RGB, and live battery reporting are not verified."], ["How do shortcuts work?", "Select M4 or M5 in Buttons, then choose an action. Default keeps the existing mouse action. Keyboard shortcuts go to the focused app."], ["Where are my profiles and backgrounds?", "They stay on this PC and survive app updates. Profiles → Backup & restore exports a portable copy. Appearance controls saved images or GIFs, colours, glass, and scale."]].map(([title,body]) => <details className="help-answer" key={title}><summary>{title}<Plus size={17}/></summary><p>{body}</p></details>)}
             </div>
           </div></section>
           <section className="panel"><details className="diagnostics-details"><summary><span><SlidersHorizontal size={19}/>Device diagnostics<small>Advanced, read-only device information.</small></span><ChevronRight size={17}/></summary><div className="details-body"><p>Collects HID descriptors and feature reports for troubleshooting. Interfaces without feature reports can return “Incorrect function”; this alone does not mean the mouse is disconnected.</p><button className="secondary-button" disabled={diagnosticsLoading} onClick={() => void inspectDpiHardware()}><RefreshCw size={15} className={diagnosticsLoading ? "spin" : ""}/>{diagnosticsLoading ? "Collecting…" : "Collect diagnostics"}</button>{dpiDiagnostics && <pre className="diagnostics-output">{dpiDiagnostics}</pre>}</div></details></section>

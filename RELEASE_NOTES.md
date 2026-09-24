@@ -1,11 +1,11 @@
-# DeathAdder support and visual polish
+# DeathAdder hardware DPI
 
-Version 0.3.3 adds the Razer DeathAdder Essential and refreshes the interface.
+Version 0.3.4 adds native DPI control for the Razer DeathAdder Essential.
 
-- Detects the original, white-edition, and 2021 DeathAdder Essential USB revisions.
-- Adds a dedicated five-button DeathAdder layout and high-resolution product artwork.
-- Updates typography and the liquid-glass surfaces throughout the app.
-- Keeps imported backgrounds at their original quality instead of re-encoding them.
-- Preserves manual profile switching and existing side-button shortcuts.
+- Sends the published Razer DPI report to the original, white-edition, and 2021 revisions.
+- Supports values from 100 to 6,400 DPI with linked X/Y sensitivity.
+- Targets the active device by USB VID/PID so other supported mice are not changed accidentally.
+- Includes clearer hardware errors when Synapse or another process holds the HID interface.
+- Keeps the improved typography, liquid glass, high-resolution artwork, profiles, and shortcuts from v0.3.3.
 
 Download **UnnamedEnhancements.exe** below and open it directly. No ZIP extraction is needed for this release asset.
