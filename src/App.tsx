@@ -171,7 +171,7 @@ export default function App() {
   const [gradB, setGradB] = useState(() => localStorage.getItem("unnamed-bg-gradient-to") || "#202124");
   const [bgImage, setBgImage] = useState("");
   const [backgroundReady, setBackgroundReady] = useState(false);
-  const [fit, setFit] = useState<ImageFit>(() => (localStorage.getItem("unnamed-bg-fit") as ImageFit) || "cover");
+  const [fit, setFit] = useState<ImageFit>(() => (localStorage.getItem("unnamed-bg-fit-v2") as ImageFit) || "cover");
   const [bgFocus, setBgFocus] = useState(() => localStorage.getItem("unnamed-bg-focus") || "center");
   const [bgOpacity, setBgOpacity] = useState(() => Number(localStorage.getItem("unnamed-bg-opacity") || 100));
   const [bgBlur, setBgBlur] = useState(() => Number(localStorage.getItem("unnamed-bg-blur") || 0));
@@ -194,7 +194,8 @@ export default function App() {
   const isDeathAdder = mouse?.name.includes("DeathAdder Essential") ?? false;
   const isX1 = mouse?.name.includes("Attack Shark X1") ?? false;
   const deviceButtons = isG305 || isModelO ? [...buttonNames, "Button 6"] : buttonNames;
-  const deviceImage = isG305 ? "/assets/logitech/g305-top.png" : isModelO ? "/assets/glorious/model-o-wired-top.png" : isDeathAdder ? "/assets/razer/deathadder-essential-top.png" : "/assets/x1/attack-shark-x1-top.png";
+  const deviceImage = isG305 ? "/assets/logitech/g305-top.png" : isModelO ? "/assets/glorious/model-o-wired-top.png" : isDeathAdder ? "/assets/razer/deathadder-essential-top-v2.png" : "/assets/x1/attack-shark-x1-top.png";
+  const deviceClass = isDeathAdder ? "device-deathadder" : isX1 ? "device-x1" : isG305 ? "device-g305" : isModelO ? "device-model-o" : "device-generic";
   const sideButtonView = isX1 && (selectedButton === "Button 4" || selectedButton === "Button 5");
   const buttonMapImage = sideButtonView ? "/assets/x1/attack-shark-x1-side.png" : deviceImage;
   const dpiMinimum = isDeathAdder ? 100 : isG305 ? 200 : 50;
@@ -244,7 +245,7 @@ export default function App() {
     return () => { window.clearTimeout(fadeTimer); window.clearTimeout(removeTimer); };
   }, [activeNotification]);
 
-  useEffect(() => { localStorage.setItem("unnamed-bg-mode", bgMode); localStorage.setItem("unnamed-bg-color", bgColor); localStorage.setItem("unnamed-bg-gradient-from", gradA); localStorage.setItem("unnamed-bg-gradient-to", gradB); localStorage.setItem("unnamed-bg-fit", fit); localStorage.setItem("unnamed-bg-focus", bgFocus); localStorage.setItem("unnamed-bg-opacity", String(bgOpacity)); localStorage.setItem("unnamed-bg-blur", String(bgBlur)); localStorage.setItem("unnamed-bg-saturation", String(bgSaturation)); localStorage.setItem("unnamed-ui-scale", String(uiScale)); localStorage.setItem("unnamed-glass-mode", glassMode); localStorage.setItem("unnamed-glass-opacity", String(glassOpacity)); localStorage.setItem("unnamed-glass-blur", String(glassBlur)); localStorage.setItem("unnamed-glass-tint-v2", glassTint); localStorage.setItem("unnamed-glass-border", String(glassBorder)); localStorage.setItem("unnamed-glass-radius", String(glassRadius)); localStorage.setItem("unnamed-text-scale", String(textScale)); localStorage.setItem("unnamed-user-name", userName.trim()); localStorage.setItem("unnamed-accent-color-v2", accentColor); localStorage.setItem("unnamed-layout-density", layoutDensity); localStorage.setItem("unnamed-motion-enabled", String(motionEnabled)); }, [bgMode,bgColor,gradA,gradB,fit,bgFocus,bgOpacity,bgBlur,bgSaturation,uiScale,textScale,glassMode,glassOpacity,glassBlur,glassTint,glassBorder,glassRadius,userName,accentColor,layoutDensity,motionEnabled]);
+  useEffect(() => { localStorage.setItem("unnamed-bg-mode", bgMode); localStorage.setItem("unnamed-bg-color", bgColor); localStorage.setItem("unnamed-bg-gradient-from", gradA); localStorage.setItem("unnamed-bg-gradient-to", gradB); localStorage.setItem("unnamed-bg-fit-v2", fit); localStorage.setItem("unnamed-bg-focus", bgFocus); localStorage.setItem("unnamed-bg-opacity", String(bgOpacity)); localStorage.setItem("unnamed-bg-blur", String(bgBlur)); localStorage.setItem("unnamed-bg-saturation", String(bgSaturation)); localStorage.setItem("unnamed-ui-scale", String(uiScale)); localStorage.setItem("unnamed-glass-mode", glassMode); localStorage.setItem("unnamed-glass-opacity", String(glassOpacity)); localStorage.setItem("unnamed-glass-blur", String(glassBlur)); localStorage.setItem("unnamed-glass-tint-v2", glassTint); localStorage.setItem("unnamed-glass-border", String(glassBorder)); localStorage.setItem("unnamed-glass-radius", String(glassRadius)); localStorage.setItem("unnamed-text-scale", String(textScale)); localStorage.setItem("unnamed-user-name", userName.trim()); localStorage.setItem("unnamed-accent-color-v2", accentColor); localStorage.setItem("unnamed-layout-density", layoutDensity); localStorage.setItem("unnamed-motion-enabled", String(motionEnabled)); }, [bgMode,bgColor,gradA,gradB,fit,bgFocus,bgOpacity,bgBlur,bgSaturation,uiScale,textScale,glassMode,glassOpacity,glassBlur,glassTint,glassBorder,glassRadius,userName,accentColor,layoutDensity,motionEnabled]);
   useEffect(() => { let active = true; void readBackground().then(image => { if (active) setBgImage(image); }).catch(() => undefined).finally(() => { if (active) setBackgroundReady(true); }); return () => { active = false; }; }, []);
   useEffect(() => { if (backgroundReady) void writeBackground(bgImage).catch(() => setError("Could not save that background image.")); }, [bgImage, backgroundReady]);
   useEffect(() => {
@@ -377,7 +378,7 @@ export default function App() {
   };
 
 
-  return <div className={"app-shell glass-"+glassMode+" density-"+layoutDensity+" "+(motionEnabled ? "motion-on" : "motion-off")} style={glassStyle}>
+  return <div className={"app-shell background-"+bgMode+" "+deviceClass+" glass-"+glassMode+" density-"+layoutDensity+" "+(motionEnabled ? "motion-on" : "motion-off")} style={glassStyle}>
     <div className="background-layer" style={{ ...background, opacity: bgMode === "default" ? 1 : bgOpacity / 100, filter: "blur("+bgBlur+"px) saturate("+bgSaturation+"%)" }} />
     <div className="background-shade" />
     <div className="notification-stack" aria-live="polite">{activeNotification && <article className={"app-notification "+(notificationLeaving ? "leaving" : "")} key={activeNotification.id}><span className="notification-icon"><Check size={18}/></span><div><strong>{activeNotification.title}</strong><p>{activeNotification.detail}</p></div></article>}</div>
@@ -389,7 +390,7 @@ export default function App() {
         <div className="sidebar-bottom">
           <button className="current-device" onClick={() => changeTab("overview")} aria-label="Show current device">{connected ? <img src={deviceImage} alt=""/> : <Mouse size={30}/>}<span><small><i className={"device-dot "+(connected ? "online" : "")}/>{connected ? "CONNECTED" : "NO DEVICE"}</small><strong>{mouse?.name || "Connect your mouse"}</strong><em>{connected ? connectionLabel : "USB or wireless receiver"}</em></span></button>
           <button title="Appearance" className={"nav-item settings-nav "+(tab === "settings" ? "active" : "")} onClick={() => changeTab("settings")} aria-current={tab === "settings" ? "page" : undefined}><Settings size={19}/><span>Appearance</span><ChevronRight size={14}/></button>
-          <div className="sidebar-footer"><span>Made for your everyday.</span><span>v0.4.0</span></div>
+          <div className="sidebar-footer"><span>Made for your everyday.</span><span>v0.4.1</span></div>
         </div>
       </aside>
       <main className="content" id="main-content">
@@ -400,9 +401,9 @@ export default function App() {
           <section className="device-hero panel">
             <div className="device-hero-copy"><span className="status-pill"><i className={"device-dot "+(connected ? "online" : "")}/>{loading ? "Looking for your device" : connected ? "Connected and ready" : "Waiting for a mouse"}</span><span className="hero-eyebrow">YOUR DAILY DRIVER</span><h2>{mouse?.name || "A good setup starts here."}</h2><p>{connected ? connectionLabel : "Connect a mouse with its USB cable or receiver, then scan to get started."}</p>
               <div className="hero-actions"><button className="primary-button" onClick={() => changeTab(connected ? "buttons" : "help")}>{connected ? "Make it yours" : "Connection help"}<ArrowRight size={16}/></button><button className="secondary-button" onClick={() => void refresh()} disabled={loading}><RefreshCw size={15} className={loading ? "spin" : ""}/>{loading ? "Scanning…" : "Scan devices"}</button></div>
-              <div className="device-meta"><span>{canChangeDpi ? "Native DPI control" : connected ? "Detection & side-button shortcuts" : "No device selected"}</span>{mouse?.vid && <code>{mouse.vid} / {mouse.pid}</code>}</div>
+              <div className="device-meta"><span>{isDeathAdder ? "Native Razer HID · 100–6,400 DPI" : canChangeDpi ? "Native DPI control" : connected ? "Detection & side-button shortcuts" : "No device selected"}</span>{mouse?.vid && <code>{mouse.vid} / {mouse.pid}</code>}</div>
             </div>
-            <div className="hero-visual"><div className="mouse-orbit"/>{connected ? <img src={deviceImage} alt={(mouse?.name || "Mouse")+", top view"}/> : <Mouse className="empty-mouse" strokeWidth={.7}/>}<span>{connected ? "READY WHEN YOU ARE" : "YOUR NEXT SETUP"}</span></div>
+            <div className="hero-visual"><div className="mouse-orbit"/>{connected ? <img src={deviceImage} alt={(mouse?.name || "Mouse")+", top view"}/> : <Mouse className="empty-mouse" strokeWidth={.7}/>}<span>{isDeathAdder ? "DEATHADDER ONLINE" : connected ? "READY WHEN YOU ARE" : "YOUR NEXT SETUP"}</span></div>
           </section>
           <div className="section-heading"><h2>The essentials</h2><span>Less friction. More control.</span></div>
           <div className="overview-grid">

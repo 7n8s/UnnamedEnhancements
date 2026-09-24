@@ -1,12 +1,12 @@
-# Command-center redesign
+# DeathAdder precision polish
 
-Version 0.4.0 completely rebuilds the interface around a compact device command center.
+Version 0.4.1 sharpens the command-center redesign and makes the Razer DeathAdder Essential feel native to the experience.
 
-- Replaces the wide sidebar and stacked dashboard with a focused icon rail and spacious workspace.
-- Adds a new device stage that puts the connected mouse, status, and primary actions front and center.
-- Reworks Overview, Buttons, DPI, Profiles, Tester, Help, and Appearance into a consistent visual system.
-- Introduces cooler mint accents, richer layered glass, sharper typography, and cleaner responsive layouts.
-- Improves image presentation with high-quality scaling and device-specific artwork.
-- Keeps the native DeathAdder DPI protocol, X1 support, profiles, shortcuts, diagnostics, and appearance controls.
+- Replaces the DeathAdder artwork with a high-resolution, transparent studio render.
+- Adds model-specific green lighting, an online state, and clear native-HID DPI capability details.
+- Refines the button map with stronger selection feedback and cleaner product rendering.
+- Softens the complete interface with more consistent rounded geometry and richer glass edges.
+- Improves typography, hover motion, depth, and responsive image sizing throughout the app.
+- Keeps all v0.4.0 controls and hardware support unchanged.
 
 Download **UnnamedEnhancements.exe** below and open it directly. No ZIP extraction is needed for this release asset.
