@@ -150,6 +150,17 @@ fn apply_known_mouse_identity(mouse: &mut MouseDevice) {
     {
         mouse.name = "Attack Shark X1".to_string();
         mouse.manufacturer = Some("Attack Shark".to_string());
+    } else if mouse.vid.as_deref() == Some("0x1532")
+        && matches!(
+            mouse.pid.as_deref(),
+            Some("0x006e") | Some("0x0071") | Some("0x0098")
+        )
+    {
+        // Original, white-edition, and 2021 DeathAdder Essential revisions.
+        // Detection only: do not send unverified Razer feature reports.
+        mouse.name = "Razer DeathAdder Essential".to_string();
+        mouse.manufacturer = Some("Razer".to_string());
+        mouse.connection = "Wired USB".to_string();
     } else if (mouse.vid.as_deref() == Some("0x046d")
         && matches!(mouse.pid.as_deref(), Some("0xc53f") | Some("0x4074")))
         || is_g305_family_name(mouse)

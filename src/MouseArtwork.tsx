@@ -16,7 +16,8 @@ export default function MouseArtwork({ side = false, selected, onSelect }: Props
     <defs>
       {drawing.zones.map(zone => <clipPath key={zone.button} id={id+"-"+zone.button.replace(" ", "")}><path d={zone.path}/></clipPath>)}
     </defs>
-    <image href={drawing.image} width={drawing.width} height={drawing.height} pointerEvents="none"/>
+    <image href={drawing.image} width={drawing.width} height={drawing.height}
+      preserveAspectRatio="xMidYMid meet" pointerEvents="none"/>
     {drawing.zones.map(zone => <path key={zone.button} d={zone.path}
       className={"mouse-hit-zone"+(selected === zone.button ? " selected" : "")}
       clipPath={`url(#${id}-${zone.button.replace(" ", "")})`}

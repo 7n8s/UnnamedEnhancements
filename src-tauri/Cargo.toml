@@ -1,12 +1,12 @@
 [package]
 name = "unnamed-desktop-app"
-version = "0.3.2"
+version = "0.3.3"
 description = "Unnamed Windows Desktop App"
 authors = ["7n8s"]
 edition = "2021"
 
 [build-dependencies]
-tauri-build = { version = "2" }
+tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = ["tray-icon"] }

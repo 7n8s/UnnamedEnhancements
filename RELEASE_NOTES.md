@@ -1,10 +1,11 @@
-# Manual profile switching
+# DeathAdder support and visual polish
 
-Version 0.3.2 removes automatic profile switching.
+Version 0.3.3 adds the Razer DeathAdder Essential and refreshes the interface.
 
-- Unnamed no longer watches running programs or polls the Windows process list.
-- The automatic-switching controls have been removed from Profiles.
-- Profiles can still be selected manually from the profile cards or active-profile menu.
-- Custom program actions assigned to mouse buttons are unchanged.
+- Detects the original, white-edition, and 2021 DeathAdder Essential USB revisions.
+- Adds a dedicated five-button DeathAdder layout and high-resolution product artwork.
+- Updates typography and the liquid-glass surfaces throughout the app.
+- Keeps imported backgrounds at their original quality instead of re-encoding them.
+- Preserves manual profile switching and existing side-button shortcuts.
 
 Download **UnnamedEnhancements.exe** below and open it directly. No ZIP extraction is needed for this release asset.
