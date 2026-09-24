@@ -1,6 +1,6 @@
 # Unnamed Enhancements
 
-A focused Windows workspace for your mouse. Charcoal glass, a warm accent, and the controls that matter.
+A focused Windows workspace for your mouse, rebuilt as a compact command center with cooler glass, sharper typography, and device-first controls.
 
 ## Download
 
@@ -8,13 +8,13 @@ Download **UnnamedEnhancements.exe** from [Releases](https://github.com/7n8s/Unn
 
 ## What's inside
 
-- Overview with connected-device status and quick DPI controls.
+- Compact icon rail and a device-first overview with connected status and quick DPI controls.
 - Physical-button selection, device-matched layouts, and Windows side-button shortcuts.
 - Typed DPI, a slider, and presets for the Attack Shark X1 and Razer DeathAdder Essential.
 - Local profiles with manual switching, import, and export.
 - Mouse input tester and read-only HID diagnostics.
 - Optional Serx assistant using a local Ollama installation.
-- Custom colours, glass, images/GIFs, scaling, spacing, and reduced motion.
+- Custom colours, layered liquid glass, high-quality images/GIFs, scaling, spacing, and reduced motion.
 
 ## Hardware boundaries
 
