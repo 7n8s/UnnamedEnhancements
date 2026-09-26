@@ -1,10 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
 import MouseArtwork from "./MouseArtwork";
-import { ArrowDownToLine, ArrowRight, Check, ChevronRight, CircleHelp, Gauge, Gamepad2, Keyboard, Mouse, Palette, Play, Plus, RefreshCw, Settings, ShieldCheck, SlidersHorizontal, Trash2, Upload, X } from "lucide-react";
+import { ArrowDownToLine, ArrowRight, Check, ChevronRight, CircleHelp, Gauge, Gamepad2, Keyboard, Lightbulb, Mouse, Palette, Play, Plus, RefreshCw, Settings, ShieldCheck, SlidersHorizontal, Sparkles, Trash2, Upload, X } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
-type MouseDevice = { id: string; name: string; manufacturer: string | null; vid: string | null; pid: string | null; connection: string; connected: boolean };
-type Tab = "overview" | "buttons" | "performance" | "profiles" | "tester" | "help" | "settings";
+type DetectedDevice = { id: string; name: string; manufacturer: string | null; vid: string | null; pid: string | null; connection: string; connected: boolean; deviceKind: "mouse" | "keyboard" };
+type Tab = "overview" | "lighting" | "buttons" | "performance" | "profiles" | "tester" | "help" | "settings";
 type BackgroundMode = "default" | "solid" | "gradient" | "image";
 type ImageFit = "cover" | "contain" | "stretch";
 type GlassMode = "regular" | "clear";
@@ -12,6 +12,7 @@ type AppNotification = { id: string; title: string; detail: string };
 
 const tabs: { id: Tab; label: string; icon: typeof Mouse; description: string }[] = [
   { id: "overview", label: "Overview", icon: Mouse, description: "Your mouse, at a glance." },
+  { id: "lighting", label: "RGB lighting", icon: Lightbulb, description: "Colour every zone of your Apex 3 TKL." },
   { id: "buttons", label: "Buttons", icon: Keyboard, description: "Make your side buttons work for you." },
   { id: "performance", label: "DPI & sensitivity", icon: Gauge, description: "Find the movement that feels right." },
   { id: "profiles", label: "Profiles", icon: Gamepad2, description: "A setup for every part of your day." },
@@ -22,6 +23,10 @@ const tabs: { id: Tab; label: string; icon: typeof Mouse; description: string }[
 const sidebarGroups: { label: string; ids: Tab[] }[] = [
   { label: "Workspace", ids: ["overview", "buttons", "performance", "profiles"] },
   { label: "Tools", ids: ["tester", "help"] },
+];
+const keyboardSidebarGroups: { label: string; ids: Tab[] }[] = [
+  { label: "Keyboard", ids: ["overview", "lighting"] },
+  { label: "Tools", ids: ["help"] },
 ];
 const buttonLabel = (button: string) => ({ "Button 1": "Left click", "Button 2": "Right click", "Button 3": "Wheel click", "Button 4": "Side button 1", "Button 5": "Side button 2", "Button 6": "DPI button" }[button] || button);
 
@@ -100,6 +105,10 @@ function hex(value: string, fallback: string) {
   if (/^[0-9a-f]{3}$/i.test(clean)) return `#${clean.split("").map(c => c + c).join("").toUpperCase()}`;
   return fallback;
 }
+function rgbFromHex(value: string) {
+  const clean = hex(value, "#FFFFFF").slice(1);
+  return { red: Number.parseInt(clean.slice(0, 2), 16), green: Number.parseInt(clean.slice(2, 4), 16), blue: Number.parseInt(clean.slice(4, 6), 16) };
+}
 function HexColor({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   const [text, setText] = useState(value.slice(1));
   useEffect(() => setText(value.slice(1)), [value]);
@@ -145,7 +154,8 @@ export default function App() {
   const [dpiStatus, setDpiStatus] = useState("Saved in this profile");
   const [tab, setTab] = useState<Tab>("overview");
   useLayoutEffect(() => { document.getElementById("main-content")?.scrollTo({ top: 0, behavior: "instant" }); }, [tab]);
-  const [mice, setMice] = useState<MouseDevice[]>([]);
+  const [devices, setDevices] = useState<DetectedDevice[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState("");
   const [showOtherDevices, setShowOtherDevices] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -188,24 +198,38 @@ export default function App() {
   const [glassBorder, setGlassBorder] = useState(() => Number(localStorage.getItem("unnamed-glass-border") || 42));
   const [glassRadius, setGlassRadius] = useState(() => Number(localStorage.getItem("unnamed-glass-radius") || 22));
 
-  const mouse = mice.find(m => m.connected) ?? mice[0];
+  const defaultZoneColors = ["#7DEEFF", "#6DFFCF", "#A9FF68", "#EDFF55", "#FFD84B", "#FF9D55", "#FF6B8D", "#D977FF"];
+  const [zoneColors, setZoneColors] = useState<string[]>(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("unnamed-apex-zone-colors") || "[]") as string[];
+      return stored.length === 8 ? stored.map((color, index) => hex(color, defaultZoneColors[index])) : defaultZoneColors;
+    } catch { return defaultZoneColors; }
+  });
+  const [lightingMode, setLightingMode] = useState<"static" | "rainbow">(() => localStorage.getItem("unnamed-apex-mode") === "rainbow" ? "rainbow" : "static");
+  const [lightingBrightness, setLightingBrightness] = useState(() => Number(localStorage.getItem("unnamed-apex-brightness") || 14));
+  const [lightingStatus, setLightingStatus] = useState("Ready to apply");
+  const [lightingBusy, setLightingBusy] = useState(false);
+
+  const mouse = devices.find(device => device.id === selectedDeviceId) ?? devices.find(device => device.deviceKind === "keyboard" && device.pid === "0x1622") ?? devices.find(device => device.connected) ?? devices[0];
+  const isApex3Tkl = mouse?.deviceKind === "keyboard" && mouse?.vid === "0x1038" && mouse?.pid === "0x1622";
   const isG305 = /G30[45]/i.test(mouse?.name || "");
   const isModelO = mouse?.name.includes("Model O Wired") ?? false;
   const isDeathAdder = mouse?.name.includes("DeathAdder Essential") ?? false;
   const isX1 = mouse?.name.includes("Attack Shark X1") ?? false;
   const deviceButtons = isG305 || isModelO ? [...buttonNames, "Button 6"] : buttonNames;
-  const deviceImage = isG305 ? "/assets/logitech/g305-top.png" : isModelO ? "/assets/glorious/model-o-wired-top.png" : isDeathAdder ? "/assets/razer/deathadder-essential-top-v2.png" : "/assets/x1/attack-shark-x1-top.png";
-  const deviceClass = isDeathAdder ? "device-deathadder" : isX1 ? "device-x1" : isG305 ? "device-g305" : isModelO ? "device-model-o" : "device-generic";
+  const deviceImage = isApex3Tkl ? "/assets/steelseries/apex-3-tkl-white-cutout.png" : isG305 ? "/assets/logitech/g305-top.png" : isModelO ? "/assets/glorious/model-o-wired-top.png" : isDeathAdder ? "/assets/razer/deathadder-essential-top-v2.png" : "/assets/x1/attack-shark-x1-top.png";
+  const deviceClass = isApex3Tkl ? "device-apex" : isDeathAdder ? "device-deathadder" : isX1 ? "device-x1" : isG305 ? "device-g305" : isModelO ? "device-model-o" : "device-generic";
   const sideButtonView = isX1 && (selectedButton === "Button 4" || selectedButton === "Button 5");
   const buttonMapImage = sideButtonView ? "/assets/x1/attack-shark-x1-side.png" : deviceImage;
   const dpiMinimum = isDeathAdder ? 100 : isG305 ? 200 : 50;
   const dpiMaximum = isDeathAdder ? 6400 : isG305 || isModelO ? 12000 : 40000;
   const connected = Boolean(mouse?.connected);
   const connectionLabel = mouse?.pid === "0x5032" ? "USB-C (wired)" : mouse?.pid === "0x5031" ? "2.4 GHz receiver" : mouse?.connection || "Not reported";
-  const canChangeDpi = connected && (isX1 || isDeathAdder);
+  const canChangeDpi = connected && !isApex3Tkl && (isX1 || isDeathAdder);
   const dpiDeviceName = isDeathAdder ? "DeathAdder" : "X1";
   const canRemap = selectedButton === "Button 4" || selectedButton === "Button 5";
   const currentTab = tabs.find(item => item.id === tab)!;
+  const visibleSidebarGroups = isApex3Tkl ? keyboardSidebarGroups : sidebarGroups;
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
@@ -213,6 +237,20 @@ export default function App() {
     document.documentElement.style.fontSize = (16 * textScale / 100) + "px";
     return () => { document.documentElement.style.fontSize = ""; };
   }, [textScale]);
+  useEffect(() => {
+    localStorage.setItem("unnamed-apex-zone-colors", JSON.stringify(zoneColors));
+    localStorage.setItem("unnamed-apex-mode", lightingMode);
+    localStorage.setItem("unnamed-apex-brightness", String(lightingBrightness));
+  }, [zoneColors, lightingMode, lightingBrightness]);
+  useEffect(() => {
+    if (!devices.length) { if (selectedDeviceId) setSelectedDeviceId(""); return; }
+    if (!devices.some(device => device.id === selectedDeviceId)) {
+      setSelectedDeviceId((devices.find(device => device.deviceKind === "keyboard" && device.pid === "0x1622") ?? devices[0]).id);
+    }
+  }, [devices, selectedDeviceId]);
+  useEffect(() => {
+    if (isApex3Tkl && !["overview", "lighting", "help", "settings"].includes(tab)) setTab("overview");
+  }, [isApex3Tkl, tab]);
   useEffect(() => {
     localStorage.setItem("unnamed-minimise-to-tray", String(minimizeToTray));
     void invoke("set_minimize_to_tray", { enabled: minimizeToTray }).catch(() => undefined);
@@ -274,13 +312,13 @@ export default function App() {
   }, [activeProfile?.id, canChangeDpi, mouse?.id]);
 
   useEffect(() => {
-    if (!connected) return;
+    if (!connected || isApex3Tkl) return;
     void invoke("apply_button_mappings", { mappings: buttons }).catch(reason => setError(String(reason)));
-  }, [buttons, connected]);
+  }, [buttons, connected, isApex3Tkl]);
   const refresh = useCallback(async () => {
     setLoading(true); setError(null);
-    try { setMice(await invoke<MouseDevice[]>("detect_mice", { showHidden: showOtherDevices })); }
-    catch (reason) { setMice([]); setError(String(reason)); }
+    try { setDevices(await invoke<DetectedDevice[]>("detect_devices", { showHidden: showOtherDevices })); }
+    catch (reason) { setDevices([]); setError(String(reason)); }
     finally { setLoading(false); }
   }, [showOtherDevices]);
   useEffect(() => { void refresh(); }, [refresh]);
@@ -297,6 +335,28 @@ export default function App() {
       try { await invoke("set_dpi", { dpi: next, vid: mouse?.vid ?? null, pid: mouse?.pid ?? null }); setDpiStatus(`Applied to your ${dpiDeviceName}`); notify("DPI changed", `Your mouse is now set to ${next.toLocaleString()} DPI.`); }
       catch (reason) { setDpiStatus("Could not apply"); setError(String(reason)); }
     }, 420);
+  };
+  const applyLighting = async () => {
+    if (!isApex3Tkl || lightingBusy) return;
+    setLightingBusy(true); setError(null); setLightingStatus("Applying to keyboard…");
+    try {
+      if (lightingMode === "rainbow") await invoke("set_apex_rainbow", { brightness: lightingBrightness });
+      else await invoke("set_apex_rgb", { colors: zoneColors.map(rgbFromHex), brightness: lightingBrightness });
+      setLightingStatus("Applied to your Apex 3 TKL");
+      notify("Lighting applied", lightingMode === "rainbow" ? "Rainbow wave is now active." : "Your eight-zone palette is now active.");
+    } catch (reason) {
+      setLightingStatus("Could not apply"); setError(String(reason));
+    } finally { setLightingBusy(false); }
+  };
+  const deviceArtwork = (device: DetectedDevice) => device.deviceKind === "keyboard"
+    ? "/assets/steelseries/apex-3-tkl-white-cutout.png"
+    : /G30[45]/i.test(device.name) ? "/assets/logitech/g305-top.png"
+    : device.name.includes("Model O Wired") ? "/assets/glorious/model-o-wired-top.png"
+    : device.name.includes("DeathAdder Essential") ? "/assets/razer/deathadder-essential-top-v2.png"
+    : "/assets/x1/attack-shark-x1-top.png";
+  const selectDevice = (device: DetectedDevice) => {
+    setSelectedDeviceId(device.id);
+    setError(null);
   };
   const updateButton = (button: string, patch: Partial<ButtonBinding>) => setProfiles(items => items.map(item => item.id === activeProfile?.id ? { ...item, buttons: { ...item.buttons, [button]: { ...item.buttons[button], ...patch } } } : item));
   const testButtonAction = async (binding: ButtonBinding) => { setError(null); try { await invoke("test_button_action", { action: binding.action, target: binding.target || null }); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } };
@@ -384,36 +444,49 @@ export default function App() {
     <div className="notification-stack" aria-live="polite">{activeNotification && <article className={"app-notification "+(notificationLeaving ? "leaving" : "")} key={activeNotification.id}><span className="notification-icon"><Check size={18}/></span><div><strong>{activeNotification.title}</strong><p>{activeNotification.detail}</p></div></article>}</div>
     <div className="ui-scale-layer" style={{ "--ui-scale": uiScale / 100 } as React.CSSProperties}>
       <aside className="sidebar">
-        <button className="brand" title="Unnamed home" onClick={() => changeTab("overview")} aria-label="Unnamed home"><span className="brand-mark"><Mouse size={23}/></span><span><strong>unnamed<span className="brand-period">/</span></strong><small>DEVICE CONTROL</small></span></button>
-        <nav className="nav-list" aria-label="Channels">{sidebarGroups.map(group => <div className="nav-group" key={group.label}><span className="nav-caption">{group.label}</span>{group.ids.map(id => { const item = tabs.find(candidate => candidate.id === id)!; const Icon = item.icon; return <button title={item.label} className={"nav-item "+(tab === id ? "active" : "")} key={id} aria-current={tab === id ? "page" : undefined} onClick={() => changeTab(id)}><Icon size={19}/><span>{item.label}</span>{tab === id && <span className="active-mark"/>}</button>; })}</div>)}</nav>
-        <div className="sidebar-note"><span>QUICK STATUS</span><strong>{connected ? "Ready to configure" : "Connect a mouse to begin"}</strong><small>{activeProfile?.name || "Default"} profile · changes save automatically</small></div>
+        <button className="brand" title="Unnamed home" onClick={() => changeTab("overview")} aria-label="Unnamed home"><span className="brand-mark">{isApex3Tkl ? <Keyboard size={23}/> : <Mouse size={23}/>}</span><span><strong>unnamed<span className="brand-period">/</span></strong><small>DEVICE CONTROL</small></span></button>
+        <nav className="nav-list" aria-label="Channels">{visibleSidebarGroups.map(group => <div className="nav-group" key={group.label}><span className="nav-caption">{group.label}</span>{group.ids.map(id => { const item = tabs.find(candidate => candidate.id === id)!; const Icon = item.icon; return <button title={item.label} className={"nav-item "+(tab === id ? "active" : "")} key={id} aria-current={tab === id ? "page" : undefined} onClick={() => changeTab(id)}><Icon size={19}/><span>{item.label}</span>{tab === id && <span className="active-mark"/>}</button>; })}</div>)}</nav>
+        <div className="sidebar-note"><span>QUICK STATUS</span><strong>{connected ? "Ready to configure" : "Connect a device to begin"}</strong><small>{isApex3Tkl ? "Eight-zone RGB control" : `${activeProfile?.name || "Default"} profile · changes save automatically`}</small></div>
         <div className="sidebar-bottom">
-          <button className="current-device" onClick={() => changeTab("overview")} aria-label="Show current device">{connected ? <img src={deviceImage} alt=""/> : <Mouse size={30}/>}<span><small><i className={"device-dot "+(connected ? "online" : "")}/>{connected ? "CONNECTED" : "NO DEVICE"}</small><strong>{mouse?.name || "Connect your mouse"}</strong><em>{connected ? connectionLabel : "USB or wireless receiver"}</em></span></button>
+          <button className="current-device" onClick={() => changeTab("overview")} aria-label="Show current device">{connected ? <img src={deviceImage} alt=""/> : <Mouse size={30}/>}<span><small><i className={"device-dot "+(connected ? "online" : "")}/>{connected ? "CONNECTED" : "NO DEVICE"}</small><strong>{mouse?.name || "Connect a device"}</strong><em>{connected ? connectionLabel : "USB or wireless receiver"}</em></span></button>
           <button title="Appearance" className={"nav-item settings-nav "+(tab === "settings" ? "active" : "")} onClick={() => changeTab("settings")} aria-current={tab === "settings" ? "page" : undefined}><Settings size={19}/><span>Appearance</span><ChevronRight size={14}/></button>
-          <div className="sidebar-footer"><span>Made for your everyday.</span><span>v0.4.1</span></div>
+          <div className="sidebar-footer"><span>Made for your everyday.</span><span>v0.5.0</span></div>
         </div>
       </aside>
       <main className="content" id="main-content">
-        <header className="topbar"><div><span className="eyebrow">{tab === "overview" ? "DEVICE COMMAND CENTER" : "CONTROL MODULE"}</span><h1>{tab === "overview" ? "Dial in your setup." : currentTab.label}</h1><p>{tab === "overview" ? `${greeting}${userName.trim() ? `, ${userName.trim()}` : ""}. Your hardware, profiles and shortcuts are ready.` : currentTab.description}</p></div><label className="active-profile"><Gamepad2 size={17}/><span><small>ACTIVE PROFILE</small><select aria-label="Active profile" value={activeProfile?.id || ""} onChange={e => setProfile(e.target.value)}>{profiles.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></span></label></header>
+        <header className="topbar"><div><span className="eyebrow">{tab === "overview" ? "DEVICE COMMAND CENTER" : "CONTROL MODULE"}</span><h1>{tab === "overview" ? (isApex3Tkl ? "Light up your setup." : "Dial in your setup.") : currentTab.label}</h1><p>{tab === "overview" ? `${greeting}${userName.trim() ? `, ${userName.trim()}` : ""}. ${isApex3Tkl ? "Your keyboard and lighting controls are ready." : "Your hardware, profiles and shortcuts are ready."}` : currentTab.description}</p></div>{!isApex3Tkl && <label className="active-profile"><Gamepad2 size={17}/><span><small>ACTIVE PROFILE</small><select aria-label="Active profile" value={activeProfile?.id || ""} onChange={e => setProfile(e.target.value)}>{profiles.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></span></label>}</header>
         {error && <div className="error-banner" role="alert"><CircleHelp size={18}/><p>{error}</p><button aria-label="Dismiss error" onClick={() => setError(null)}><X size={16}/></button></div>}
         <div className="channel-content" key={tab}>
         {tab === "overview" && <>
           <section className="device-hero panel">
-            <div className="device-hero-copy"><span className="status-pill"><i className={"device-dot "+(connected ? "online" : "")}/>{loading ? "Looking for your device" : connected ? "Connected and ready" : "Waiting for a mouse"}</span><span className="hero-eyebrow">YOUR DAILY DRIVER</span><h2>{mouse?.name || "A good setup starts here."}</h2><p>{connected ? connectionLabel : "Connect a mouse with its USB cable or receiver, then scan to get started."}</p>
-              <div className="hero-actions"><button className="primary-button" onClick={() => changeTab(connected ? "buttons" : "help")}>{connected ? "Make it yours" : "Connection help"}<ArrowRight size={16}/></button><button className="secondary-button" onClick={() => void refresh()} disabled={loading}><RefreshCw size={15} className={loading ? "spin" : ""}/>{loading ? "Scanning…" : "Scan devices"}</button></div>
-              <div className="device-meta"><span>{isDeathAdder ? "Native Razer HID · 100–6,400 DPI" : canChangeDpi ? "Native DPI control" : connected ? "Detection & side-button shortcuts" : "No device selected"}</span>{mouse?.vid && <code>{mouse.vid} / {mouse.pid}</code>}</div>
+            <div className="device-hero-copy"><span className="status-pill"><i className={"device-dot "+(connected ? "online" : "")}/>{loading ? "Looking for your device" : connected ? "Connected and ready" : "Waiting for a device"}</span><span className="hero-eyebrow">{isApex3Tkl ? "YOUR KEYBOARD" : "YOUR DAILY DRIVER"}</span><h2>{mouse?.name || "A good setup starts here."}</h2><p>{connected ? connectionLabel : "Connect your device with its USB cable or receiver, then scan to get started."}</p>
+              <div className="hero-actions"><button className="primary-button" onClick={() => changeTab(connected ? (isApex3Tkl ? "lighting" : "buttons") : "help")}>{connected ? (isApex3Tkl ? "Customise RGB" : "Make it yours") : "Connection help"}<ArrowRight size={16}/></button><button className="secondary-button" onClick={() => void refresh()} disabled={loading}><RefreshCw size={15} className={loading ? "spin" : ""}/>{loading ? "Scanning…" : "Scan devices"}</button></div>
+              <div className="device-meta"><span>{isApex3Tkl ? "Native SteelSeries HID · 8-zone RGB" : isDeathAdder ? "Native Razer HID · 100–6,400 DPI" : canChangeDpi ? "Native DPI control" : connected ? "Detection & side-button shortcuts" : "No device selected"}</span>{mouse?.vid && <code>{mouse.vid} / {mouse.pid}</code>}</div>
             </div>
-            <div className="hero-visual"><div className="mouse-orbit"/>{connected ? <img src={deviceImage} alt={(mouse?.name || "Mouse")+", top view"}/> : <Mouse className="empty-mouse" strokeWidth={.7}/>}<span>{isDeathAdder ? "DEATHADDER ONLINE" : connected ? "READY WHEN YOU ARE" : "YOUR NEXT SETUP"}</span></div>
+            <div className="hero-visual"><div className="mouse-orbit"/>{connected ? <img src={deviceImage} alt={(mouse?.name || "Device")+", top view"}/> : <Mouse className="empty-mouse" strokeWidth={.7}/>}<span>{isApex3Tkl ? "APEX LIGHTING ONLINE" : isDeathAdder ? "DEATHADDER ONLINE" : connected ? "READY WHEN YOU ARE" : "YOUR NEXT SETUP"}</span></div>
           </section>
+          {devices.length > 1 && <section className="connected-devices"><div className="section-heading"><h2>Connected devices</h2><span>Choose one to open its controls.</span></div><div className="device-deck">{devices.map(device => <button className={"device-card "+(device.id === mouse?.id ? "selected" : "")} key={device.id} onClick={() => selectDevice(device)} aria-pressed={device.id === mouse?.id}><span className="device-card-art"><img src={deviceArtwork(device)} alt=""/></span><span className="device-card-copy"><small><i className="device-dot online"/>{device.deviceKind === "keyboard" ? "KEYBOARD" : "MOUSE"}</small><strong>{device.name}</strong><em>{device.connection}</em></span><span className="device-card-action">{device.id === mouse?.id ? "Active" : "Open"}<ArrowRight size={15}/></span></button>)}</div></section>}
           <div className="section-heading"><h2>The essentials</h2><span>Less friction. More control.</span></div>
-          <div className="overview-grid">
+          {isApex3Tkl ? <div className="overview-grid apex-overview-grid">
+            <section className="panel quick-lighting"><div className="card-heading"><span className="icon-tile"><Lightbulb size={20}/></span><div><h3>Your lighting</h3><p>Eight zones, one seamless palette.</p></div><button className="icon-button" aria-label="Open RGB lighting" onClick={() => changeTab("lighting")}><ArrowRight size={18}/></button></div><div className="zone-strip" aria-label="Current eight-zone palette">{zoneColors.map((color, index) => <span key={index} style={{ background: color }}/>)}</div><div className="lighting-summary"><span>{lightingMode === "rainbow" ? "Rainbow wave" : "Static palette"}</span><span>{Math.round(lightingBrightness / 16 * 100)}% brightness</span></div><button className="primary-button" onClick={() => changeTab("lighting")}><Sparkles size={16}/>Customise lighting</button></section>
+            <section className="panel overview-profile keyboard-card"><span className="icon-tile"><Keyboard size={20}/></span><span className="eyebrow">APEX 3 TKL WHITE</span><h3>Built for colour.</h3><p>Choose a complete rainbow wave or tune each of the keyboard's eight lighting zones independently.</p><div className="profile-tags"><span>8 RGB zones</span><span>Wired USB</span></div><button className="text-button" onClick={() => changeTab("lighting")}>Open RGB studio <ArrowRight size={16}/></button></section>
+          </div> : <div className="overview-grid">
             <section className="panel quick-dpi"><div className="card-heading"><span className="icon-tile"><Gauge size={20}/></span><div><h3>Find your pace</h3><p>Sensitivity, made simple.</p></div><button className="icon-button" aria-label="Open DPI settings" onClick={() => changeTab("performance")}><ArrowRight size={18}/></button></div>
               <fieldset disabled={!canChangeDpi} className="dpi-field"><DpiInput value={dpi} onApply={applyDpi} minimum={dpiMinimum} maximum={dpiMaximum}/><input aria-label="Quick DPI" type="range" min={dpiMinimum} max={dpiMaximum} step="50" value={dpi} onChange={e => applyDpi(Number(e.target.value))}/><div className="range-ends"><span>Slower movement</span><span>Faster movement</span></div><div className="dpi-preset-row">{dpiPresets.slice(0,4).map(value => <button className={dpi === value ? "selected" : ""} aria-pressed={dpi === value} key={value} onClick={() => applyDpi(value)}>{value.toLocaleString()}</button>)}</div></fieldset>
               <p className="footnote">{canChangeDpi ? dpiStatus : connected ? "Hardware DPI control is available for the X1 and DeathAdder Essential." : "Connect a supported mouse to adjust hardware DPI."}</p>
             </section>
             <section className="panel overview-profile"><span className="icon-tile"><Gamepad2 size={20}/></span><span className="eyebrow">PICK UP WHERE YOU LEFT OFF</span><h3>{activeProfile?.name || "Default"}</h3><p>Your DPI and shortcuts, kept together. Create a different setup for work, play, or anything in between.</p><div className="profile-tags"><span>{dpi.toLocaleString()} DPI saved</span><span>{Object.values(buttons).filter(b => !["Default","Back","Forward"].includes(b.action)).length} custom actions</span></div><button className="text-button" onClick={() => changeTab("profiles")}>Manage profiles <ArrowRight size={16}/></button></section>
-          </div>
-          <div className="overview-links"><button onClick={() => changeTab("tester")}><SlidersHorizontal size={22}/><span><strong>Check your clicks</strong><small>Buttons and scroll, in one simple test.</small></span><ArrowRight size={18}/></button><button onClick={() => changeTab("settings")}><Palette size={22}/><span><strong>Set the mood</strong><small>Your colours, your glass, your background.</small></span><ArrowRight size={18}/></button></div>
+          </div>}
+          <div className="overview-links">{!isApex3Tkl && <button onClick={() => changeTab("tester")}><SlidersHorizontal size={22}/><span><strong>Check your clicks</strong><small>Buttons and scroll, in one simple test.</small></span><ArrowRight size={18}/></button>}<button onClick={() => changeTab("settings")}><Palette size={22}/><span><strong>Set the mood</strong><small>Your colours, your glass, your background.</small></span><ArrowRight size={18}/></button></div>
+        </>}
+        {tab === "lighting" && <>
+          <section className="panel lighting-studio"><div className="lighting-header"><div><span className="eyebrow">PRISMSYNC LIGHTING</span><h2>Shape the glow.</h2><p>Set a colour for each physical lighting zone, or let the whole board flow with a rainbow wave.</p></div><div className="lighting-mode-switch" role="group" aria-label="Lighting effect"><button className={lightingMode === "static" ? "selected" : ""} onClick={() => setLightingMode("static")}><Lightbulb size={16}/>Static</button><button className={lightingMode === "rainbow" ? "selected" : ""} onClick={() => setLightingMode("rainbow")}><Sparkles size={16}/>Rainbow</button></div></div>
+            <div className="keyboard-preview"><img src="/assets/steelseries/apex-3-tkl-white-cutout.png" alt="SteelSeries Apex 3 TKL White"/><div className="keyboard-glow">{zoneColors.map((color, index) => <span key={index} style={{ background: color, boxShadow: `0 0 34px ${color}` }}/>)}</div></div>
+            {lightingMode === "static" && <div className="zone-editor"><div className="zone-editor-heading"><div><span className="field-caption">EIGHT-ZONE PALETTE</span><h3>Colour from left to right.</h3></div><button className="secondary-button" onClick={() => setZoneColors(defaultZoneColors)}>Reset rainbow palette</button></div><div className="zone-controls">{zoneColors.map((color, index) => <div className="zone-control" key={index} style={{ "--zone-color": color } as React.CSSProperties}><span className="zone-number">{index + 1}</span><HexColor label={`Zone ${index + 1}`} value={color} onChange={value => setZoneColors(colors => colors.map((item, itemIndex) => itemIndex === index ? value : item))}/></div>)}</div></div>}
+            {lightingMode === "rainbow" && <div className="rainbow-callout"><Sparkles size={28}/><div><h3>Rainbow wave</h3><p>The keyboard animates its built-in spectrum across all eight zones.</p></div></div>}
+            <div className="lighting-footer"><label>Brightness <b>{Math.round(lightingBrightness / 16 * 100)}%</b><input type="range" min="0" max="16" value={lightingBrightness} onChange={event => setLightingBrightness(Number(event.target.value))}/></label><div><span className="save-status"><Check size={15}/>{lightingStatus}</span><button className="primary-button" disabled={lightingBusy || !isApex3Tkl} onClick={() => void applyLighting()}>{lightingBusy ? <RefreshCw size={16} className="spin"/> : <Lightbulb size={16}/>}Apply to keyboard</button></div></div>
+          </section>
+          <div className="inline-note apex-note"><ShieldCheck size={17}/><p>Lighting commands are sent directly to the Apex 3 TKL. If SteelSeries GG has exclusive access to the keyboard, close it and apply again.</p></div>
         </>}
         {tab === "buttons" && <>
           <section className="panel button-workspace">
@@ -451,10 +524,10 @@ export default function App() {
           <section className="panel help-panel"><div className="card-heading"><div><h2>A few helpful answers</h2><p>The essentials, without the manual.</p></div><CircleHelp size={23}/></div>
           <div className="help-sections">
             <div className="help-section"><h3>Getting started</h3>
-              {[["My mouse isn't showing up", "Connect the USB cable or 2.4 GHz receiver, then scan from Overview. The X1 reports USB-C when wired and 2.4 GHz when using its receiver."], ["How do I change DPI?", "Open DPI & sensitivity. Type a number and press Enter, choose a preset, or move the slider. The update is sent after you stop adjusting."]].map(([title,body]) => <details className="help-answer" key={title}><summary>{title}<Plus size={17}/></summary><p>{body}</p></details>)}
+              {[["My device isn't showing up", "Connect its USB cable or 2.4 GHz receiver, then scan from Overview. The Apex 3 TKL White is recognised through its wired SteelSeries USB interface."], ["How do I change DPI or RGB?", "Mouse sensitivity lives in DPI & sensitivity. When an Apex 3 TKL is detected, the app switches to RGB lighting with eight zone colours, brightness, and rainbow controls."]].map(([title,body]) => <details className="help-answer" key={title}><summary>{title}<Plus size={17}/></summary><p>{body}</p></details>)}
             </div>
             <div className="help-section"><h3>Customising</h3>
-              {[["What can Unnamed control?", "Attack Shark X1 and Razer DeathAdder Essential hardware DPI are supported. Logitech G305/G304 and Glorious Model O Wired have detection and matching layouts. Native main-button remapping, polling rate, RGB, and live battery reporting are not verified."], ["How do shortcuts work?", "Select M4 or M5 in Buttons, then choose an action. Default keeps the existing mouse action. Keyboard shortcuts go to the focused app."], ["Where are my profiles and backgrounds?", "They stay on this PC and survive app updates. Profiles → Backup & restore exports a portable copy. Appearance controls saved images or GIFs, colours, glass, and scale."]].map(([title,body]) => <details className="help-answer" key={title}><summary>{title}<Plus size={17}/></summary><p>{body}</p></details>)}
+              {[["What can Unnamed control?", "SteelSeries Apex 3 TKL eight-zone RGB, Attack Shark X1 DPI, and Razer DeathAdder Essential DPI are supported. Logitech G305/G304 and Glorious Model O Wired have detection and matching layouts."], ["How do shortcuts work?", "Select M4 or M5 in Buttons, then choose an action. Default keeps the existing mouse action. Keyboard shortcuts go to the focused app."], ["Where are my profiles and backgrounds?", "They stay on this PC and survive app updates. Profiles → Backup & restore exports a portable copy. Appearance controls saved images or GIFs, colours, glass, and scale."]].map(([title,body]) => <details className="help-answer" key={title}><summary>{title}<Plus size={17}/></summary><p>{body}</p></details>)}
             </div>
           </div></section>
           <section className="panel"><details className="diagnostics-details"><summary><span><SlidersHorizontal size={19}/>Device diagnostics<small>Advanced, read-only device information.</small></span><ChevronRight size={17}/></summary><div className="details-body"><p>Collects HID descriptors and feature reports for troubleshooting. Interfaces without feature reports can return “Incorrect function”; this alone does not mean the mouse is disconnected.</p><button className="secondary-button" disabled={diagnosticsLoading} onClick={() => void inspectDpiHardware()}><RefreshCw size={15} className={diagnosticsLoading ? "spin" : ""}/>{diagnosticsLoading ? "Collecting…" : "Collect diagnostics"}</button>{dpiDiagnostics && <pre className="diagnostics-output">{dpiDiagnostics}</pre>}</div></details></section>

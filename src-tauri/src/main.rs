@@ -18,6 +18,8 @@ use tauri::{
 mod dpi;
 #[cfg(target_os = "windows")]
 mod remap;
+#[cfg(target_os = "windows")]
+mod rgb;
 
 #[derive(Default)]
 struct TrayState {
@@ -26,7 +28,7 @@ struct TrayState {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct MouseDevice {
+struct DetectedDevice {
     id: String,
     name: String,
     manufacturer: Option<String>,
@@ -34,19 +36,44 @@ struct MouseDevice {
     pid: Option<String>,
     connection: String,
     connected: bool,
+    device_kind: String,
 }
 
 #[tauri::command]
-fn detect_mice(show_hidden: bool) -> Result<Vec<MouseDevice>, String> {
+fn detect_devices(show_hidden: bool) -> Result<Vec<DetectedDevice>, String> {
     #[cfg(target_os = "windows")]
     {
-        let mice = windows_mouse_detection::detect()?;
-        Ok(mice.into_iter().filter(|mouse| show_hidden || is_relevant_mouse(mouse)).collect())
+        let mut devices = windows_device_detection::detect_keyboards()?;
+        let mice = windows_device_detection::detect_mice()?;
+        devices.extend(mice.into_iter().filter(|mouse| show_hidden || is_relevant_mouse(mouse)));
+        Ok(devices)
     }
     #[cfg(not(target_os = "windows"))]
     {
         let _ = show_hidden;
-        Err("Mouse detection is currently available on Windows only.".to_string())
+        Err("Device detection is currently available on Windows only.".to_string())
+    }
+}
+
+#[tauri::command]
+fn set_apex_rgb(colors: Vec<rgb::RgbColor>, brightness: u8) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    { rgb::set_apex_rgb(&colors, brightness) }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = (colors, brightness);
+        Err("Apex lighting control is currently available on Windows only.".to_string())
+    }
+}
+
+#[tauri::command]
+fn set_apex_rainbow(brightness: u8) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    { rgb::set_apex_rainbow(brightness) }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = brightness;
+        Err("Apex lighting control is currently available on Windows only.".to_string())
     }
 }
 
@@ -130,7 +157,7 @@ fn apply_button_mappings(mappings: std::collections::HashMap<String, remap::Butt
         Err("Button remapping is currently available on Windows only.".to_string())
     }
 }
-fn is_relevant_mouse(mouse: &MouseDevice) -> bool {
+fn is_relevant_mouse(mouse: &DetectedDevice) -> bool {
     const GAMING_BRANDS: &[&str] = &[
         "attack shark", "logitech", "razer", "steelseries", "corsair", "glorious",
         "pulsar", "endgame gear", "zowie", "benq", "finalmouse", "lamzu", "darmoshark",
@@ -146,7 +173,7 @@ fn is_relevant_mouse(mouse: &MouseDevice) -> bool {
     mouse.vid.is_some() && mouse.manufacturer.is_some() && !text.contains("microsoft") && !text.contains("unknown")
 }
 
-fn is_g305_family_name(mouse: &MouseDevice) -> bool {
+fn is_g305_family_name(mouse: &DetectedDevice) -> bool {
     let identity = format!(
         "{} {} {}",
         mouse.name,
@@ -157,7 +184,7 @@ fn is_g305_family_name(mouse: &MouseDevice) -> bool {
     identity.contains("g305") || identity.contains("g304")
 }
 
-fn apply_known_mouse_identity(mouse: &mut MouseDevice) {
+fn apply_known_mouse_identity(mouse: &mut DetectedDevice) {
     if mouse.vid.as_deref() == Some("0x3151")
         && matches!(mouse.pid.as_deref(), Some("0x5031") | Some("0x5032"))
     {
@@ -195,23 +222,34 @@ fn apply_known_mouse_identity(mouse: &mut MouseDevice) {
 }
 
 #[cfg(target_os = "windows")]
-mod windows_mouse_detection {
-    use super::{apply_known_mouse_identity, MouseDevice};
+mod windows_device_detection {
+    use super::{apply_known_mouse_identity, DetectedDevice};
     use std::mem::size_of;
     use windows::{
         core::PCWSTR,
         Win32::Devices::DeviceAndDriverInstallation::{
             SetupDiDestroyDeviceInfoList, SetupDiEnumDeviceInfo, SetupDiGetClassDevsW,
             SetupDiGetDeviceInstanceIdW, SetupDiGetDeviceRegistryPropertyW, DIGCF_PRESENT,
-            GUID_DEVCLASS_MOUSE, HDEVINFO, SETUP_DI_REGISTRY_PROPERTY, SP_DEVINFO_DATA,
+            GUID_DEVCLASS_KEYBOARD, GUID_DEVCLASS_MOUSE, HDEVINFO, SETUP_DI_REGISTRY_PROPERTY, SP_DEVINFO_DATA,
             SPDRP_DEVICEDESC, SPDRP_FRIENDLYNAME, SPDRP_HARDWAREID, SPDRP_MFG,
         },
     };
 
-    pub fn detect() -> Result<Vec<MouseDevice>, String> {
-        let device_info_set = unsafe { SetupDiGetClassDevsW(Some(&GUID_DEVCLASS_MOUSE), PCWSTR::null(), None, DIGCF_PRESENT) }
-            .map_err(|error| format!("Windows could not enumerate mouse devices: {error}"))?;
-        let mut mice = Vec::new();
+    pub fn detect_mice() -> Result<Vec<DetectedDevice>, String> {
+        detect_class(&GUID_DEVCLASS_MOUSE, "mouse", "mouse")
+    }
+
+    pub fn detect_keyboards() -> Result<Vec<DetectedDevice>, String> {
+        let keyboards = detect_class(&GUID_DEVCLASS_KEYBOARD, "keyboard", "keyboard")?;
+        Ok(keyboards.into_iter().filter(|device| {
+            device.vid.as_deref() == Some("0x1038") && device.pid.as_deref() == Some("0x1622")
+        }).collect())
+    }
+
+    fn detect_class(class_guid: &windows::core::GUID, label: &str, device_kind: &str) -> Result<Vec<DetectedDevice>, String> {
+        let device_info_set = unsafe { SetupDiGetClassDevsW(Some(class_guid), PCWSTR::null(), None, DIGCF_PRESENT) }
+            .map_err(|error| format!("Windows could not enumerate {label} devices: {error}"))?;
+        let mut devices = Vec::new();
         let mut index = 0;
         loop {
             let mut device_info = SP_DEVINFO_DATA { cbSize: size_of::<SP_DEVINFO_DATA>() as u32, ..Default::default() };
@@ -221,10 +259,10 @@ mod windows_mouse_detection {
             let hardware_id = registry_property(device_info_set, &device_info, SPDRP_HARDWAREID).unwrap_or_else(|| instance_id.clone());
             let name = registry_property(device_info_set, &device_info, SPDRP_FRIENDLYNAME)
                 .or_else(|| registry_property(device_info_set, &device_info, SPDRP_DEVICEDESC))
-                .unwrap_or_else(|| "Unknown mouse".to_string());
+                .unwrap_or_else(|| format!("Unknown {label}"));
             let manufacturer = registry_property(device_info_set, &device_info, SPDRP_MFG).filter(|value| !value.trim().is_empty());
             let id_source = format!("{hardware_id} {instance_id}");
-            let mut mouse = MouseDevice {
+            let mut device = DetectedDevice {
                 id: instance_id,
                 name,
                 manufacturer,
@@ -232,14 +270,21 @@ mod windows_mouse_detection {
                 pid: usb_identifier(&id_source, "PID_"),
                 connection: connection_type(&id_source).to_string(),
                 connected: true,
+                device_kind: device_kind.to_string(),
             };
-            apply_known_mouse_identity(&mut mouse);
-            mice.push(mouse);
+            if device_kind == "mouse" {
+                apply_known_mouse_identity(&mut device);
+            } else if device.vid.as_deref() == Some("0x1038") && device.pid.as_deref() == Some("0x1622") {
+                device.name = "SteelSeries Apex 3 TKL White".to_string();
+                device.manufacturer = Some("SteelSeries".to_string());
+                device.connection = "Wired USB".to_string();
+            }
+            devices.push(device);
         }
         let _ = unsafe { SetupDiDestroyDeviceInfoList(device_info_set) };
-        mice.sort_by(|left, right| left.name.cmp(&right.name));
-        mice.dedup_by(|left, right| left.id == right.id);
-        Ok(mice)
+        devices.sort_by(|left, right| left.name.cmp(&right.name));
+        devices.dedup_by(|left, right| left.id == right.id);
+        Ok(devices)
     }
 
     fn registry_property(device_info_set: HDEVINFO, device_info: &SP_DEVINFO_DATA, property: SETUP_DI_REGISTRY_PROPERTY) -> Option<String> {
@@ -438,7 +483,7 @@ fn main() {
     tauri::Builder::default()
         .manage(TrayState { minimize_to_tray: AtomicBool::new(false) })
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![detect_mice, inspect_dpi_hardware, get_x1_battery, get_dpi, set_dpi, set_minimize_to_tray, test_button_action, apply_button_mappings, download_latest_app])
+        .invoke_handler(tauri::generate_handler![detect_devices, set_apex_rgb, set_apex_rainbow, inspect_dpi_hardware, get_x1_battery, get_dpi, set_dpi, set_minimize_to_tray, test_button_action, apply_button_mappings, download_latest_app])
         .on_tray_icon_event(|tray, event| match event {
             TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } => {
                 if let Some(window) = tray.app_handle().get_webview_window("main") {
