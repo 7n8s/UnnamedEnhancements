@@ -215,14 +215,15 @@ export default function App() {
   const isG305 = /G30[45]/i.test(mouse?.name || "");
   const isModelO = mouse?.name.includes("Model O Wired") ?? false;
   const isDeathAdder = mouse?.name.includes("DeathAdder Essential") ?? false;
+  const isHyperXHaste2 = mouse?.name.includes("Pulsefire Haste 2 Wireless") ?? false;
   const isX1 = mouse?.name.includes("Attack Shark X1") ?? false;
-  const deviceButtons = isG305 || isModelO ? [...buttonNames, "Button 6"] : buttonNames;
-  const deviceImage = isApex3Tkl ? "/assets/steelseries/apex-3-tkl-white-cutout.png" : isG305 ? "/assets/logitech/g305-top.png" : isModelO ? "/assets/glorious/model-o-wired-top.png" : isDeathAdder ? "/assets/razer/deathadder-essential-top-v2.png" : "/assets/x1/attack-shark-x1-top.png";
-  const deviceClass = isApex3Tkl ? "device-apex" : isDeathAdder ? "device-deathadder" : isX1 ? "device-x1" : isG305 ? "device-g305" : isModelO ? "device-model-o" : "device-generic";
-  const sideButtonView = isX1 && (selectedButton === "Button 4" || selectedButton === "Button 5");
-  const buttonMapImage = sideButtonView ? "/assets/x1/attack-shark-x1-side.png" : deviceImage;
-  const dpiMinimum = isDeathAdder ? 100 : isG305 ? 200 : 50;
-  const dpiMaximum = isDeathAdder ? 6400 : isG305 || isModelO ? 12000 : 40000;
+  const deviceButtons = isG305 || isModelO || isHyperXHaste2 ? [...buttonNames, "Button 6"] : buttonNames;
+  const deviceImage = isApex3Tkl ? "/assets/steelseries/apex-3-tkl-white-cutout.png" : isHyperXHaste2 ? "/assets/hyperx/pulsefire-haste-2-wireless-top.png" : isG305 ? "/assets/logitech/g305-top.png" : isModelO ? "/assets/glorious/model-o-wired-top.png" : isDeathAdder ? "/assets/razer/deathadder-essential-top-v2.png" : "/assets/x1/attack-shark-x1-top.png";
+  const deviceClass = isApex3Tkl ? "device-apex" : isHyperXHaste2 ? "device-hyperx" : isDeathAdder ? "device-deathadder" : isX1 ? "device-x1" : isG305 ? "device-g305" : isModelO ? "device-model-o" : "device-generic";
+  const sideButtonView = (isX1 || isHyperXHaste2) && (selectedButton === "Button 4" || selectedButton === "Button 5");
+  const buttonMapImage = sideButtonView ? (isHyperXHaste2 ? "/assets/hyperx/pulsefire-haste-2-wireless-side.png" : "/assets/x1/attack-shark-x1-side.png") : deviceImage;
+  const dpiMinimum = isDeathAdder || isHyperXHaste2 ? 100 : isG305 ? 200 : 50;
+  const dpiMaximum = isHyperXHaste2 ? 26000 : isDeathAdder ? 6400 : isG305 || isModelO ? 12000 : 40000;
   const connected = Boolean(mouse?.connected);
   const connectionLabel = mouse?.pid === "0x5032" ? "USB-C (wired)" : mouse?.pid === "0x5031" ? "2.4 GHz receiver" : mouse?.connection || "Not reported";
   const canChangeDpi = connected && !isApex3Tkl && (isX1 || isDeathAdder);
@@ -350,6 +351,7 @@ export default function App() {
   };
   const deviceArtwork = (device: DetectedDevice) => device.deviceKind === "keyboard"
     ? "/assets/steelseries/apex-3-tkl-white-cutout.png"
+    : device.name.includes("Pulsefire Haste 2 Wireless") ? "/assets/hyperx/pulsefire-haste-2-wireless-top.png"
     : /G30[45]/i.test(device.name) ? "/assets/logitech/g305-top.png"
     : device.name.includes("Model O Wired") ? "/assets/glorious/model-o-wired-top.png"
     : device.name.includes("DeathAdder Essential") ? "/assets/razer/deathadder-essential-top-v2.png"
@@ -461,9 +463,9 @@ export default function App() {
           <section className="device-hero panel">
             <div className="device-hero-copy"><span className="status-pill"><i className={"device-dot "+(connected ? "online" : "")}/>{loading ? "Looking for your device" : connected ? "Connected and ready" : "Waiting for a device"}</span><span className="hero-eyebrow">{isApex3Tkl ? "YOUR KEYBOARD" : "YOUR DAILY DRIVER"}</span><h2>{mouse?.name || "A good setup starts here."}</h2><p>{connected ? connectionLabel : "Connect your device with its USB cable or receiver, then scan to get started."}</p>
               <div className="hero-actions"><button className="primary-button" onClick={() => changeTab(connected ? (isApex3Tkl ? "lighting" : "buttons") : "help")}>{connected ? (isApex3Tkl ? "Customise RGB" : "Make it yours") : "Connection help"}<ArrowRight size={16}/></button><button className="secondary-button" onClick={() => void refresh()} disabled={loading}><RefreshCw size={15} className={loading ? "spin" : ""}/>{loading ? "Scanning…" : "Scan devices"}</button></div>
-              <div className="device-meta"><span>{isApex3Tkl ? "Native SteelSeries HID · 8-zone RGB" : isDeathAdder ? "Native Razer HID · 100–6,400 DPI" : canChangeDpi ? "Native DPI control" : connected ? "Detection & side-button shortcuts" : "No device selected"}</span>{mouse?.vid && <code>{mouse.vid} / {mouse.pid}</code>}</div>
+              <div className="device-meta"><span>{isApex3Tkl ? "Native SteelSeries HID · 8-zone RGB" : isHyperXHaste2 ? "HyperX 26K sensor · 61 g · tri-mode wireless" : isDeathAdder ? "Native Razer HID · 100–6,400 DPI" : canChangeDpi ? "Native DPI control" : connected ? "Detection & side-button shortcuts" : "No device selected"}</span>{mouse?.vid && <code>{mouse.vid} / {mouse.pid}</code>}</div>
             </div>
-            <div className="hero-visual"><div className="mouse-orbit"/>{connected ? <img src={deviceImage} alt={(mouse?.name || "Device")+", top view"}/> : <Mouse className="empty-mouse" strokeWidth={.7}/>}<span>{isApex3Tkl ? "APEX LIGHTING ONLINE" : isDeathAdder ? "DEATHADDER ONLINE" : connected ? "READY WHEN YOU ARE" : "YOUR NEXT SETUP"}</span></div>
+            <div className="hero-visual"><div className="mouse-orbit"/>{connected ? <img src={deviceImage} alt={(mouse?.name || "Device")+", top view"}/> : <Mouse className="empty-mouse" strokeWidth={.7}/>}<span>{isApex3Tkl ? "APEX LIGHTING ONLINE" : isHyperXHaste2 ? "HASTE 2 WIRELESS ONLINE" : isDeathAdder ? "DEATHADDER ONLINE" : connected ? "READY WHEN YOU ARE" : "YOUR NEXT SETUP"}</span></div>
           </section>
           {devices.length > 1 && <section className="connected-devices"><div className="section-heading"><h2>Connected devices</h2><span>Choose one to open its controls.</span></div><div className="device-deck">{devices.map(device => <button className={"device-card "+(device.id === mouse?.id ? "selected" : "")} key={device.id} onClick={() => selectDevice(device)} aria-pressed={device.id === mouse?.id}><span className="device-card-art"><img src={deviceArtwork(device)} alt=""/></span><span className="device-card-copy"><small><i className="device-dot online"/>{device.deviceKind === "keyboard" ? "KEYBOARD" : "MOUSE"}</small><strong>{device.name}</strong><em>{device.connection}</em></span><span className="device-card-action">{device.id === mouse?.id ? "Active" : "Open"}<ArrowRight size={15}/></span></button>)}</div></section>}
           <div className="section-heading"><h2>The essentials</h2><span>Less friction. More control.</span></div>
@@ -491,7 +493,7 @@ export default function App() {
         {tab === "buttons" && <>
           <section className="panel button-workspace">
             <div className="mouse-button-map"><div className="card-heading"><div><span className="eyebrow">POINT & PERSONALISE</span><h2>{mouse?.name || "Button layout"}</h2></div><span className="subtle-badge">{sideButtonView ? "Side view" : "Top view"}</span></div>
-              <div className={"mouse-map-canvas "+(isG305 ? "g305-map" : isModelO ? "model-o-map" : isDeathAdder ? "deathadder-map" : "x1-map")+(sideButtonView ? " side-view-map" : "")}>{isX1 ? <MouseArtwork key={sideButtonView ? "side" : "top"} side={sideButtonView} selected={selectedButton} onSelect={setSelectedButton}/> : <><img className="button-map-image" key={buttonMapImage} src={buttonMapImage} alt={sideButtonView ? "Mouse side view" : "Mouse top view"}/>{mouseHotspots.filter(zone => deviceButtons.includes(zone.button) && (!sideButtonView || ["Button 4","Button 5"].includes(zone.button))).map(zone => <button className={zone.className+" "+(selectedButton === zone.button ? "selected" : "")} key={zone.button} onClick={() => setSelectedButton(zone.button)} aria-pressed={selectedButton === zone.button} aria-label={"Select "+zone.label}/>)}</>}</div>
+              <div className={"mouse-map-canvas "+(isHyperXHaste2 ? "hyperx-map" : isG305 ? "g305-map" : isModelO ? "model-o-map" : isDeathAdder ? "deathadder-map" : "x1-map")+(sideButtonView ? " side-view-map" : "")}>{isX1 ? <MouseArtwork key={sideButtonView ? "side" : "top"} side={sideButtonView} selected={selectedButton} onSelect={setSelectedButton}/> : <><img className="button-map-image" key={buttonMapImage} src={buttonMapImage} alt={sideButtonView ? "Mouse side view" : "Mouse top view"}/>{mouseHotspots.filter(zone => deviceButtons.includes(zone.button) && (!sideButtonView || ["Button 4","Button 5"].includes(zone.button))).map(zone => <button className={zone.className+" "+(selectedButton === zone.button ? "selected" : "")} key={zone.button} onClick={() => setSelectedButton(zone.button)} aria-pressed={selectedButton === zone.button} aria-label={"Select "+zone.label}/>)}</>}</div>
               <p className="map-instruction">Select a button on the mouse or in the list below.</p><div className="button-selector">{deviceButtons.map(button => <button className={selectedButton === button ? "selected" : ""} onClick={() => setSelectedButton(button)} aria-pressed={selectedButton === button} key={button}><b>{button.replace("Button ","M")}</b><span>{buttonLabel(button)}</span></button>)}</div>
             </div>
             {(() => { const binding = buttons[selectedButton] || { action: "Default" as ButtonAction }; return <div className="button-editor"><span className="eyebrow">BUTTON ASSIGNMENT</span><h2>{buttonLabel(selectedButton)}</h2><p className="editor-intro">{canRemap ? "A small shortcut. A little time back." : "This button keeps its native mouse action."}</p>

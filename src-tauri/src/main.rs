@@ -184,12 +184,34 @@ fn is_g305_family_name(mouse: &DetectedDevice) -> bool {
     identity.contains("g305") || identity.contains("g304")
 }
 
+fn is_hyperx_haste_2_wireless_name(mouse: &DetectedDevice) -> bool {
+    let identity = format!(
+        "{} {} {}",
+        mouse.name,
+        mouse.manufacturer.as_deref().unwrap_or_default(),
+        mouse.id,
+    )
+    .to_ascii_lowercase();
+    identity.contains("pulsefire haste 2 wireless")
+}
+
 fn apply_known_mouse_identity(mouse: &mut DetectedDevice) {
     if mouse.vid.as_deref() == Some("0x3151")
         && matches!(mouse.pid.as_deref(), Some("0x5031") | Some("0x5032"))
     {
         mouse.name = "Attack Shark X1".to_string();
         mouse.manufacturer = Some("Attack Shark".to_string());
+    } else if (mouse.vid.as_deref() == Some("0x03f0")
+        && mouse.pid.as_deref() == Some("0x0f98"))
+        || is_hyperx_haste_2_wireless_name(mouse)
+    {
+        // The 2.4 GHz receiver uses HP's USB vendor ID. Keep support
+        // detection-only until its vendor feature reports are verified.
+        mouse.name = "HyperX Pulsefire Haste 2 Wireless".to_string();
+        mouse.manufacturer = Some("HyperX".to_string());
+        if mouse.vid.as_deref() == Some("0x03f0") && mouse.pid.as_deref() == Some("0x0f98") {
+            mouse.connection = "2.4 GHz wireless".to_string();
+        }
     } else if mouse.vid.as_deref() == Some("0x1532")
         && matches!(
             mouse.pid.as_deref(),

@@ -173,6 +173,15 @@ input[type=checkbox]:checked::after{transform:translateX(15px);background:#24282
 .deathadder-map .wheel-click{left:46.2%;top:12%;width:7.6%;height:18%;border-radius:12px}
 .deathadder-map .side-one{left:14.5%;top:31%;width:5%;height:13%;transform:rotate(-7deg);border-radius:8px}
 .deathadder-map .side-two{left:14.3%;top:45%;width:5.4%;height:14%;transform:rotate(-5deg);border-radius:8px}
+.hyperx-map .left-click{left:12%;top:7%;width:37%;height:34%;border-radius:30% 4px 8px 18%;clip-path:polygon(0 19%,92% 0,100% 100%,10% 92%)}
+.hyperx-map .right-click{left:49%;top:4%;width:36%;height:39%;border-radius:4px 32% 18% 8px;clip-path:polygon(0 0,88% 18%,100% 94%,0 100%)}
+.hyperx-map .wheel-click{left:39%;top:13%;width:9%;height:18%;transform:rotate(-12deg);border-radius:12px}
+.hyperx-map .dpi-cycle{left:43%;top:33%;width:7%;height:10%;transform:rotate(-8deg)}
+.hyperx-map .side-one{left:10%;top:37%;width:7%;height:13%;transform:rotate(-8deg)}
+.hyperx-map .side-two{left:14%;top:49%;width:7%;height:14%;transform:rotate(-8deg)}
+.hyperx-map.side-view-map{max-width:470px;aspect-ratio:1}
+.hyperx-map.side-view-map .side-one{left:34%;top:47%;width:14%;height:4.8%;transform:none;clip-path:polygon(0 30%,100% 0,96% 100%,7% 100%);border-radius:8px}
+.hyperx-map.side-view-map .side-two{left:48.5%;top:46.7%;width:14%;height:5.2%;transform:none;clip-path:polygon(0 0,100% 26%,90% 100%,0 100%);border-radius:8px}
 .map-instruction{font-size:.7rem;text-align:center;margin:12px 0 20px}
 .button-selector{display:flex;gap:6px;flex-wrap:wrap}
 .button-selector>button{display:flex;align-items:center;gap:7px;background:rgba(0,0,0,.13);border:1px solid var(--line);border-radius:7px;padding:8px 10px;color:var(--muted)}
@@ -436,6 +445,11 @@ input:not([type=range]):not([type=checkbox]):not([type=color]),select,textarea{b
 .device-deathadder .hero-visual:before{border-color:rgba(84,255,137,.16);box-shadow:0 0 70px rgba(42,255,116,.055),inset 0 0 70px rgba(42,255,116,.025)}
 .device-deathadder .hero-visual>span{color:#6fff9e;text-shadow:0 0 20px rgba(55,255,121,.24)}
 .device-deathadder .status-pill{background:rgba(54,255,122,.075);border-color:rgba(77,255,138,.2)}
+.device-hyperx .hero-visual{background:radial-gradient(circle at 50% 48%,rgba(255,56,76,.15),transparent 46%),linear-gradient(145deg,rgba(49,13,20,.38),transparent 65%)}
+.device-hyperx .hero-visual:before{border-color:rgba(255,76,94,.18);box-shadow:0 0 72px rgba(255,49,70,.07),inset 0 0 70px rgba(255,49,70,.03)}
+.device-hyperx .hero-visual>span{color:#ff7b89;text-shadow:0 0 20px rgba(255,55,76,.28)}
+.device-hyperx .status-pill{background:rgba(255,54,76,.075);border-color:rgba(255,84,104,.22)}
+.hyperx-map .button-map-image{filter:drop-shadow(0 28px 30px rgba(0,0,0,.44)) drop-shadow(0 0 25px rgba(255,56,76,.06))}
 .button-workspace,.modal{border-radius:max(28px,var(--glass-radius))}
 .overview-links>button,.profile-card,.mouse-tester-pad{border-radius:22px}
 .background-mode,.glass-controls-grid>label,.image-controls>label,.error-banner{border-radius:19px}

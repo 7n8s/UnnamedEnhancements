@@ -9,7 +9,7 @@ Download **UnnamedEnhancements.exe** from [Releases](https://github.com/7n8s/Unn
 ## What's inside
 
 - Compact icon rail and a device-first overview with connected status and quick DPI controls.
-- Physical-button selection, device-matched layouts, and Windows side-button shortcuts.
+- Physical-button selection, device-matched layouts, and Windows side-button shortcuts, including the HyperX Pulsefire Haste 2 Wireless.
 - Typed DPI, a slider, and presets for the Attack Shark X1 and Razer DeathAdder Essential.
 - SteelSeries Apex 3 TKL White detection with a dedicated eight-zone RGB studio, brightness control, and rainbow wave.
 - Local profiles with manual switching, import, and export.
@@ -19,7 +19,7 @@ Download **UnnamedEnhancements.exe** from [Releases](https://github.com/7n8s/Unn
 
 ## Hardware boundaries
 
-Attack Shark X1 and Razer DeathAdder Essential (USB IDs `1532:006E`, `1532:0071`, and `1532:0098`) have hardware DPI control. SteelSeries Apex 3 TKL (`1038:1622`) has eight-zone RGB control through its vendor HID interface. Logitech G304/G305 and Glorious Model O Wired have detection/layout support without native DPI control. Generic mouse detection is opt-in.
+Attack Shark X1 and Razer DeathAdder Essential (USB IDs `1532:006E`, `1532:0071`, and `1532:0098`) have hardware DPI control. SteelSeries Apex 3 TKL (`1038:1622`) has eight-zone RGB control through its vendor HID interface. HyperX Pulsefire Haste 2 Wireless (`03F0:0F98`), Logitech G304/G305, and Glorious Model O Wired have detection/layout support without native DPI control. Generic mouse detection is opt-in.
 
 Side-button shortcuts use a Windows hook while Unnamed runs and may affect other attached mice. Main buttons and the physical DPI button retain their native behavior. Apex lighting is applied live and may need to be reapplied after reconnecting the keyboard. Mouse polling and live battery controls remain absent because their protocols are not verified.
 
@@ -33,6 +33,6 @@ npm.cmd run tauri dev
 npm.cmd run build:app
 ```
 
-For hardware-free design testing, run `npm.cmd run dev` and open `http://localhost:1420/?demo=x1`. Use `demo=apex`, `demo=deathadder`, `demo=g305`, or `demo=empty` for other supported and disconnected states. This fixture is clearly labelled, mocks native commands, and is excluded from production.
+For hardware-free design testing, run `npm.cmd run dev` and open `http://localhost:1420/?demo=x1`. Use `demo=apex`, `demo=hyperx`, `demo=deathadder`, `demo=g305`, or `demo=empty` for other supported and disconnected states. This fixture is clearly labelled, mocks native commands, and is excluded from production.
 
 Serx requires Ollama running locally and `ollama pull qwen2.5:3b-instruct`. It cannot change mouse settings for you.
