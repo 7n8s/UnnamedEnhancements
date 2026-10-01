@@ -336,7 +336,7 @@ mod windows_device_detection {
         let value = value.to_ascii_uppercase();
         let start = value.find(key)? + key.len();
         let identifier = value[start..].chars().take_while(|character| character.is_ascii_hexdigit()).take(4).collect::<String>();
-        (identifier.len() == 4).then(|| format!("0x{identifier}"))
+        (identifier.len() == 4).then(|| format!("0x{}", identifier.to_ascii_lowercase()))
     }
 
     fn connection_type(value: &str) -> &'static str {
