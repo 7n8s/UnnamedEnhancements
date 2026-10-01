@@ -19,7 +19,7 @@ Download **UnnamedEnhancements.exe** from [Releases](https://github.com/7n8s/Unn
 
 ## Hardware boundaries
 
-Attack Shark X1 and Razer DeathAdder Essential (USB IDs `1532:006E`, `1532:0071`, and `1532:0098`) have hardware DPI control. SteelSeries Apex 3 TKL (`1038:1622`) has eight-zone RGB control through its vendor HID interface. HyperX Pulsefire Haste 2 Wireless (`03F0:0F98`), Logitech G304/G305, and Glorious Model O Wired have detection/layout support without native DPI control. Generic mouse detection is opt-in.
+Attack Shark X1 and Razer DeathAdder Essential (USB IDs `1532:006E`, `1532:0071`, and `1532:0098`) have hardware DPI control. SteelSeries Apex 3 TKL (`1038:1622`) has eight-zone RGB control through its vendor HID interface. HyperX Pulsefire Haste 2 Wireless (`3554:FA09`, with legacy `03F0:0F98` compatibility), Logitech G304/G305, and Glorious Model O Wired have detection/layout support without native DPI control. Generic mouse detection is opt-in.
 
 Side-button shortcuts use a Windows hook while Unnamed runs and may affect other attached mice. Main buttons and the physical DPI button retain their native behavior. Apex lighting is applied live and may need to be reapplied after reconnecting the keyboard. Mouse polling and live battery controls remain absent because their protocols are not verified.
 

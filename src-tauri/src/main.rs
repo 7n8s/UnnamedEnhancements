@@ -201,16 +201,19 @@ fn apply_known_mouse_identity(mouse: &mut DetectedDevice) {
     {
         mouse.name = "Attack Shark X1".to_string();
         mouse.manufacturer = Some("Attack Shark".to_string());
-    } else if (mouse.vid.as_deref() == Some("0x03f0")
-        && mouse.pid.as_deref() == Some("0x0f98"))
+    } else if ((mouse.vid.as_deref() == Some("0x3554")
+        && mouse.pid.as_deref() == Some("0xfa09"))
+        || (mouse.vid.as_deref() == Some("0x03f0")
+            && mouse.pid.as_deref() == Some("0x0f98")))
         || is_hyperx_haste_2_wireless_name(mouse)
     {
-        // The 2.4 GHz receiver uses HP's USB vendor ID. Keep support
-        // detection-only until its vendor feature reports are verified.
+        // Current retail receivers can expose a generic 3554:FA09 HID identity;
+        // older firmware has also been reported under HP's 03F0:0F98 identity.
+        // Keep support detection-only until vendor feature reports are verified.
         mouse.name = "HyperX Pulsefire Haste 2 Wireless".to_string();
         mouse.manufacturer = Some("HyperX".to_string());
-        if mouse.vid.as_deref() == Some("0x03f0") && mouse.pid.as_deref() == Some("0x0f98") {
-            mouse.connection = "2.4 GHz wireless".to_string();
+        if matches!(mouse.vid.as_deref(), Some("0x3554") | Some("0x03f0")) {
+            mouse.connection = "USB-C / 2.4 GHz receiver".to_string();
         }
     } else if mouse.vid.as_deref() == Some("0x1532")
         && matches!(
