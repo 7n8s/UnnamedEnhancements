@@ -7,6 +7,7 @@ export function setupPreview() {
   const logitech = mode === "g305";
   const deathadder = mode === "deathadder";
   const hyperx = mode === "hyperx";
+  const smartbuy = mode === "smartbuy";
   const apex = mode === "apex";
   const notice = document.createElement("div");
   notice.textContent = "Design preview · simulated device";
@@ -17,7 +18,7 @@ export function setupPreview() {
     switch (command) {
       case "detect_devices": {
         if (empty) return [];
-        const selected = { id: "preview-device", name: hyperx ? "HyperX Pulsefire Haste 2 Wireless" : deathadder ? "Razer DeathAdder Essential" : logitech ? "Logitech G305" : "Attack Shark X1", manufacturer: hyperx ? "HyperX" : deathadder ? "Razer" : logitech ? "Logitech" : "Attack Shark", vid: hyperx ? "0x3554" : deathadder ? "0x1532" : logitech ? "0x046d" : "0x3151", pid: hyperx ? "0xfa09" : deathadder ? "0x006e" : logitech ? "0xc53f" : "0x5031", connection: hyperx ? "USB-C / 2.4 GHz receiver" : deathadder ? "Wired USB" : "USB", connected: true, deviceKind: "mouse" };
+        const selected = { id: "preview-device", name: hyperx ? "HyperX Pulsefire Haste 2 Wireless" : smartbuy ? "SmartBuy RUSH Avatar SBM-724G-W" : deathadder ? "Razer DeathAdder Essential" : logitech ? "Logitech G305" : "Attack Shark X1", manufacturer: hyperx ? "HyperX" : smartbuy ? "SmartBuy" : deathadder ? "Razer" : logitech ? "Logitech" : "Attack Shark", vid: hyperx ? "0x3554" : smartbuy ? "0x1bf8" : deathadder ? "0x1532" : logitech ? "0x046d" : "0x3151", pid: hyperx ? "0xfa09" : smartbuy ? "0x0f99" : deathadder ? "0x006e" : logitech ? "0xc53f" : "0x5031", connection: hyperx ? "USB-C / 2.4 GHz receiver" : smartbuy || deathadder ? "Wired USB" : "USB", connected: true, deviceKind: "mouse" };
         return apex ? [{ id: "preview-apex", name: "SteelSeries Apex 3 TKL White", manufacturer: "SteelSeries", vid: "0x1038", pid: "0x1622", connection: "Wired USB", connected: true, deviceKind: "keyboard" }, selected] : [selected];
       }
       case "set_dpi": case "set_apex_rgb": case "set_apex_rainbow": case "apply_button_mappings": case "set_minimize_to_tray": return;

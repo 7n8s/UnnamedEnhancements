@@ -215,6 +215,10 @@ input[type=checkbox]:checked::after{transform:translateX(15px);background:#24282
 .dpi-preset-row.full{display:grid;grid-template-columns:repeat(6,1fr);margin-top:14px}
 .dpi-preset-row.full button{font-size:1.08rem;padding:16px 5px}
 .dpi-preset-row.full small{display:block;font-size:.57rem;letter-spacing:.08em;margin-top:7px}
+.smartbuy-dpi-guide{padding:28px 0 30px}
+.smartbuy-dpi-guide .dpi-preset-row.full{grid-template-columns:repeat(4,1fr)}
+.smartbuy-dpi-guide .dpi-preset-row button{color:#e792ff;border-color:rgba(223,113,255,.2);background:rgba(210,80,255,.055);opacity:1;cursor:default}
+.smartbuy-dpi-guide>p{max-width:680px;margin:22px 0 0;color:var(--muted);line-height:1.7}
 .save-status{display:flex;align-items:center;gap:9px;color:var(--muted);border-top:1px solid var(--line);padding-top:20px;margin-top:32px;font-size:.76rem}
 .insight-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 .insight-grid h3{margin:17px 0 10px}
@@ -450,6 +454,18 @@ input:not([type=range]):not([type=checkbox]):not([type=color]),select,textarea{b
 .device-hyperx .hero-visual>span{color:#ff7b89;text-shadow:0 0 20px rgba(255,55,76,.28)}
 .device-hyperx .status-pill{background:rgba(255,54,76,.075);border-color:rgba(255,84,104,.22)}
 .hyperx-map .button-map-image{filter:drop-shadow(0 28px 30px rgba(0,0,0,.44)) drop-shadow(0 0 25px rgba(255,56,76,.06))}
+.device-smartbuy .hero-visual{background:radial-gradient(circle at 50% 48%,rgba(211,92,255,.17),transparent 47%),linear-gradient(145deg,rgba(47,17,61,.4),transparent 66%)}
+.device-smartbuy .hero-visual:before{border-color:rgba(220,115,255,.2);box-shadow:0 0 74px rgba(209,73,255,.08),inset 0 0 72px rgba(255,106,220,.035)}
+.device-smartbuy .hero-visual img{transform:rotate(-5deg) translateY(-3px)}
+.device-smartbuy .device-hero:hover .hero-visual img{transform:rotate(-3deg) translateY(-7px) scale(1.025)}
+.device-smartbuy .hero-visual>span{color:#e792ff;text-shadow:0 0 21px rgba(215,79,255,.31)}
+.device-smartbuy .status-pill{background:rgba(210,80,255,.085);border-color:rgba(223,113,255,.23)}
+.smartbuy-map .button-map-image{filter:drop-shadow(0 28px 30px rgba(0,0,0,.43)) drop-shadow(0 0 27px rgba(211,80,255,.08))}
+.smartbuy-map .left-click{left:27%;top:3%;width:22%;height:43%;border-radius:18px 4px 8px 20px;clip-path:polygon(0 8%,100% 0,100% 100%,13% 100%,0 69%)}
+.smartbuy-map .right-click{left:51%;top:3%;width:22%;height:43%;border-radius:4px 18px 20px 8px;clip-path:polygon(0 0,100% 8%,100% 69%,87% 100%,0 100%)}
+.smartbuy-map .wheel-click{left:46.5%;top:13%;width:7%;height:18%;border-radius:15px}
+.smartbuy-map .side-one{left:21.5%;top:37%;width:5%;height:10%;border-radius:8px;transform:rotate(-4deg)}
+.smartbuy-map .side-two{left:21%;top:47%;width:5.5%;height:10%;border-radius:8px;transform:rotate(-4deg)}
 .button-workspace,.modal{border-radius:max(28px,var(--glass-radius))}
 .overview-links>button,.profile-card,.mouse-tester-pad{border-radius:22px}
 .background-mode,.glass-controls-grid>label,.image-controls>label,.error-banner{border-radius:19px}

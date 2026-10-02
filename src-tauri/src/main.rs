@@ -201,6 +201,16 @@ fn apply_known_mouse_identity(mouse: &mut DetectedDevice) {
     {
         mouse.name = "Attack Shark X1".to_string();
         mouse.manufacturer = Some("Attack Shark".to_string());
+    } else if mouse.vid.as_deref() == Some("0x1bf8")
+        && mouse.pid.as_deref() == Some("0x0f99")
+    {
+        // Verified from the USB device descriptor of the wired white model.
+        // A USBPcap trace showed only standard mouse input reports on endpoint
+        // 0x81 and no host-visible report when its physical DPI button changed
+        // the built-in 1200/1600/2400/3200 presets, so keep this detection-only.
+        mouse.name = "SmartBuy RUSH Avatar SBM-724G-W".to_string();
+        mouse.manufacturer = Some("SmartBuy".to_string());
+        mouse.connection = "Wired USB".to_string();
     } else if ((mouse.vid.as_deref() == Some("0x3554")
         && mouse.pid.as_deref() == Some("0xfa09"))
         || (mouse.vid.as_deref() == Some("0x03f0")
@@ -243,6 +253,32 @@ fn apply_known_mouse_identity(mouse: &mut DetectedDevice) {
         mouse.name = "Glorious Model O Wired".to_string();
         mouse.manufacturer = Some("Glorious".to_string());
         mouse.connection = "Wired USB".to_string();
+    }
+}
+
+#[cfg(test)]
+mod device_identity_tests {
+    use super::{apply_known_mouse_identity, is_relevant_mouse, DetectedDevice};
+
+    #[test]
+    fn recognises_smartbuy_rush_avatar() {
+        let mut mouse = DetectedDevice {
+            id: "HID\\VID_1BF8&PID_0F99".to_string(),
+            name: "HID-compliant mouse".to_string(),
+            manufacturer: Some("Microsoft".to_string()),
+            vid: Some("0x1bf8".to_string()),
+            pid: Some("0x0f99".to_string()),
+            connection: "USB".to_string(),
+            connected: true,
+            device_kind: "mouse".to_string(),
+        };
+
+        apply_known_mouse_identity(&mut mouse);
+
+        assert_eq!(mouse.name, "SmartBuy RUSH Avatar SBM-724G-W");
+        assert_eq!(mouse.manufacturer.as_deref(), Some("SmartBuy"));
+        assert_eq!(mouse.connection, "Wired USB");
+        assert!(is_relevant_mouse(&mouse));
     }
 }
 
