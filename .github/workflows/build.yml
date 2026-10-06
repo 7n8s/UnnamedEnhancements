@@ -90,8 +90,8 @@ jobs:
       - name: Publish stable release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.5.5
-          name: Unnamed Enhancements v0.5.5
+          tag_name: v0.5.6
+          name: Unnamed Enhancements v0.5.6
           target_commitish: ${{ inputs.branch || github.sha }}
           body_path: RELEASE_NOTES.md
           prerelease: false

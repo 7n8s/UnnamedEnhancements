@@ -1,18 +1,24 @@
 use serde::Deserialize;
 use std::{
     collections::HashMap,
+    ffi::c_void,
     mem::size_of,
     process::Command,
-    sync::{OnceLock, RwLock},
+    ptr::null_mut,
+    sync::{
+        atomic::{AtomicBool, AtomicPtr, AtomicU32, Ordering},
+        OnceLock, RwLock,
+    },
     thread,
 };
 use windows::Win32::{
     Foundation::{LPARAM, LRESULT, WPARAM},
+    System::Threading::GetCurrentThreadId,
     UI::{
         Input::KeyboardAndMouse::{SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS, KEYEVENTF_KEYUP, VIRTUAL_KEY},
         WindowsAndMessaging::{
-        CallNextHookEx, GetMessageW, SetWindowsHookExW, UnhookWindowsHookEx,
-        MSLLHOOKSTRUCT, MSG, WH_MOUSE_LL, WM_XBUTTONDOWN, WM_XBUTTONUP,
+        CallNextHookEx, GetMessageW, PostThreadMessageW, SetWindowsHookExW, UnhookWindowsHookEx,
+        HHOOK, MSLLHOOKSTRUCT, MSG, WH_MOUSE_LL, WM_QUIT, WM_XBUTTONDOWN, WM_XBUTTONUP,
         },
     },
 };
@@ -26,26 +32,70 @@ pub struct ButtonBinding {
 }
 
 static MAPPINGS: OnceLock<RwLock<HashMap<String, ButtonBinding>>> = OnceLock::new();
+static HOOK_REQUESTED: AtomicBool = AtomicBool::new(false);
+static HOOK_HANDLE: AtomicPtr<c_void> = AtomicPtr::new(null_mut());
+static HOOK_THREAD_ID: AtomicU32 = AtomicU32::new(0);
 
-pub fn start() {
-    MAPPINGS.get_or_init(|| RwLock::new(HashMap::new()));
-    thread::spawn(|| unsafe {
+fn set_hook_enabled(enabled: bool) {
+    if enabled {
+        if HOOK_REQUESTED.swap(true, Ordering::SeqCst) {
+            return;
+        }
+        thread::spawn(|| unsafe {
+            let thread_id = GetCurrentThreadId();
+            HOOK_THREAD_ID.store(thread_id, Ordering::SeqCst);
+            if !HOOK_REQUESTED.load(Ordering::SeqCst) {
+                HOOK_THREAD_ID.store(0, Ordering::SeqCst);
+                return;
+            }
         let hook = match SetWindowsHookExW(WH_MOUSE_LL, Some(mouse_hook), None, 0) {
             Ok(hook) => hook,
-            Err(_) => return,
+                Err(_) => {
+                    HOOK_REQUESTED.store(false, Ordering::SeqCst);
+                    HOOK_THREAD_ID.store(0, Ordering::SeqCst);
+                    return;
+                }
         };
+            HOOK_HANDLE.store(hook.0, Ordering::SeqCst);
+            if !HOOK_REQUESTED.load(Ordering::SeqCst) {
+                let _ = UnhookWindowsHookEx(hook);
+                HOOK_HANDLE.store(null_mut(), Ordering::SeqCst);
+                HOOK_THREAD_ID.store(0, Ordering::SeqCst);
+                return;
+            }
         let mut message = MSG::default();
         while GetMessageW(&mut message, None, 0, 0).as_bool() {}
-        let _ = UnhookWindowsHookEx(hook);
-    });
+            if HOOK_HANDLE.swap(null_mut(), Ordering::SeqCst) == hook.0 {
+                let _ = UnhookWindowsHookEx(hook);
+            }
+            HOOK_THREAD_ID.store(0, Ordering::SeqCst);
+        });
+        return;
+    }
+
+    HOOK_REQUESTED.store(false, Ordering::SeqCst);
+    let handle = HOOK_HANDLE.swap(null_mut(), Ordering::SeqCst);
+    if !handle.is_null() {
+        unsafe { let _ = UnhookWindowsHookEx(HHOOK(handle)); }
+    }
+    let thread_id = HOOK_THREAD_ID.swap(0, Ordering::SeqCst);
+    if thread_id != 0 {
+        unsafe { let _ = PostThreadMessageW(thread_id, WM_QUIT, WPARAM(0), LPARAM(0)); }
+    }
 }
 
 pub fn set_mappings(mappings: HashMap<String, ButtonBinding>) {
+    let needs_hook = mappings.values().any(should_intercept);
+    MAPPINGS.get_or_init(|| RwLock::new(HashMap::new()));
     if let Some(stored) = MAPPINGS.get() {
         if let Ok(mut stored) = stored.write() {
             *stored = mappings;
         }
     }
+    // A WH_MOUSE_LL hook runs for every mouse packet, even when no mapping is
+    // active. Keep it completely out of the input path unless a custom side
+    // button action genuinely needs interception (important for rhythm games).
+    set_hook_enabled(needs_hook);
 }
 
 pub fn run_action(action: &str, target: Option<&str>) -> Result<(), String> {

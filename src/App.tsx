@@ -28,6 +28,10 @@ const keyboardSidebarGroups: { label: string; ids: Tab[] }[] = [
   { label: "Keyboard", ids: ["overview", "lighting"] },
   { label: "Tools", ids: ["help"] },
 ];
+const dpiOnlySidebarGroups: { label: string; ids: Tab[] }[] = [
+  { label: "Mouse", ids: ["overview", "performance", "profiles"] },
+  { label: "Tools", ids: ["tester", "help"] },
+];
 const buttonLabel = (button: string) => ({ "Button 1": "Left click", "Button 2": "Right click", "Button 3": "Wheel click", "Button 4": "Side button 1", "Button 5": "Side button 2", "Button 6": "DPI button" }[button] || button);
 
 type ButtonAction = "Default" | "Keybind" | "Open File Explorer" | "Open Task Manager" | "Open Windows Settings" | "Open Email" | "Back" | "Forward" | "DPI Up" | "DPI Down" | "Custom program" | "Disabled";
@@ -166,6 +170,7 @@ export default function App() {
   const [layoutDensity, setLayoutDensity] = useState<"comfortable" | "compact">(() => localStorage.getItem("unnamed-layout-density") === "compact" ? "compact" : "comfortable");
   const [motionEnabled, setMotionEnabled] = useState(() => localStorage.getItem("unnamed-motion-enabled") !== "false");
   const [minimizeToTray, setMinimizeToTray] = useState(() => localStorage.getItem("unnamed-minimise-to-tray") === "true");
+  const [startWithWindows, setStartWithWindows] = useState(false);
   const dpiTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastAppliedProfile = useRef<string | null>(null);
   const [notificationQueue, setNotificationQueue] = useState<AppNotification[]>([]);
@@ -230,9 +235,9 @@ export default function App() {
   const connectionLabel = mouse?.pid === "0x5032" || mouse?.pid === "0xa011" ? "USB-C (wired)" : mouse?.pid === "0x5031" || mouse?.pid === "0xa001" ? "2.4 GHz receiver" : mouse?.connection || "Not reported";
   const canChangeDpi = connected && !isApex3Tkl && (isX1 || isDexpGsCrush || isDeathAdder);
   const dpiDeviceName = isDeathAdder ? "DeathAdder" : isDexpGsCrush ? "GS Crush" : "X1";
-  const canRemap = selectedButton === "Button 4" || selectedButton === "Button 5";
+  const canRemap = !isDexpGsCrush && (selectedButton === "Button 4" || selectedButton === "Button 5");
   const currentTab = tabs.find(item => item.id === tab)!;
-  const visibleSidebarGroups = isApex3Tkl ? keyboardSidebarGroups : sidebarGroups;
+  const visibleSidebarGroups = isApex3Tkl ? keyboardSidebarGroups : isDexpGsCrush ? dpiOnlySidebarGroups : sidebarGroups;
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
@@ -253,11 +258,15 @@ export default function App() {
   }, [devices, selectedDeviceId]);
   useEffect(() => {
     if (isApex3Tkl && !["overview", "lighting", "help", "settings"].includes(tab)) setTab("overview");
-  }, [isApex3Tkl, tab]);
+    if (isDexpGsCrush && tab === "buttons") setTab("overview");
+  }, [isApex3Tkl, isDexpGsCrush, tab]);
   useEffect(() => {
     localStorage.setItem("unnamed-minimise-to-tray", String(minimizeToTray));
     void invoke("set_minimize_to_tray", { enabled: minimizeToTray }).catch(() => undefined);
   }, [minimizeToTray]);
+  useEffect(() => {
+    void invoke<boolean>("get_start_with_windows").then(setStartWithWindows).catch(() => undefined);
+  }, []);
   useEffect(() => {
     if (!renameTarget && !deleteTarget) return;
     const previous = document.activeElement as HTMLElement | null;
@@ -303,21 +312,23 @@ export default function App() {
     setDpi(activeProfile.dpi);
     setDpiStatus("Saved in this profile");
     let cancelled = false;
-    if (canChangeDpi) {
+    if (canChangeDpi && changed) {
       void invoke("set_dpi", { dpi: activeProfile.dpi, vid: mouse?.vid ?? null, pid: mouse?.pid ?? null }).then(() => {
         if (cancelled) return;
         setDpiStatus(`Applied to your ${dpiDeviceName}`);
         if (changed) notify("Profile applied", `${activeProfile.name} has been applied.`);
       }).catch(reason => { if (!cancelled) { setDpiStatus("Could not apply"); setError(String(reason)); } });
-    } else if (changed) notify("Profile selected", `${activeProfile.name} is now active. Hardware DPI is unavailable for this device.`);
+    } else if (changed && !canChangeDpi) notify("Profile selected", `${activeProfile.name} is now active. Hardware DPI is unavailable for this device.`);
     return () => { cancelled = true; };
     // Apply only on device/profile changes, not each slider movement or rename.
   }, [activeProfile?.id, canChangeDpi, mouse?.id]);
 
   useEffect(() => {
     if (!connected || isApex3Tkl) return;
-    void invoke("apply_button_mappings", { mappings: buttons }).catch(reason => setError(String(reason)));
-  }, [buttons, connected, isApex3Tkl]);
+    // GS Crush control is DPI-only. Sending an empty map guarantees that no
+    // global input hook remains active when this mouse is selected.
+    void invoke("apply_button_mappings", { mappings: isDexpGsCrush ? {} : buttons }).catch(reason => setError(String(reason)));
+  }, [buttons, connected, isApex3Tkl, isDexpGsCrush]);
   const refresh = useCallback(async () => {
     setLoading(true); setError(null);
     try { setDevices(await invoke<DetectedDevice[]>("detect_devices", { showHidden: showOtherDevices })); }
@@ -350,6 +361,13 @@ export default function App() {
     } catch (reason) {
       setLightingStatus("Could not apply"); setError(String(reason));
     } finally { setLightingBusy(false); }
+  };
+  const changeStartWithWindows = async (enabled: boolean) => {
+    const previous = startWithWindows;
+    setStartWithWindows(enabled);
+    setError(null);
+    try { await invoke("set_start_with_windows", { enabled }); }
+    catch (reason) { setStartWithWindows(previous); setError(String(reason)); }
   };
   const deviceArtwork = (device: DetectedDevice) => device.deviceKind === "keyboard"
     ? "/assets/steelseries/apex-3-tkl-white-cutout.png"
@@ -466,7 +484,7 @@ export default function App() {
         {tab === "overview" && <>
           <section className="device-hero panel">
             <div className="device-hero-copy"><span className="status-pill"><i className={"device-dot "+(connected ? "online" : "")}/>{loading ? "Looking for your device" : connected ? "Connected and ready" : "Waiting for a device"}</span><span className="hero-eyebrow">{isApex3Tkl ? "YOUR KEYBOARD" : "YOUR DAILY DRIVER"}</span><h2>{mouse?.name || "A good setup starts here."}</h2><p>{connected ? connectionLabel : "Connect your device with its USB cable or receiver, then scan to get started."}</p>
-              <div className="hero-actions"><button className="primary-button" onClick={() => changeTab(connected ? (isApex3Tkl ? "lighting" : "buttons") : "help")}>{connected ? (isApex3Tkl ? "Customise RGB" : "Make it yours") : "Connection help"}<ArrowRight size={16}/></button><button className="secondary-button" onClick={() => void refresh()} disabled={loading}><RefreshCw size={15} className={loading ? "spin" : ""}/>{loading ? "Scanning…" : "Scan devices"}</button></div>
+              <div className="hero-actions"><button className="primary-button" onClick={() => changeTab(connected ? (isApex3Tkl ? "lighting" : isDexpGsCrush ? "performance" : "buttons") : "help")}>{connected ? (isApex3Tkl ? "Customise RGB" : isDexpGsCrush ? "Adjust DPI" : "Make it yours") : "Connection help"}<ArrowRight size={16}/></button><button className="secondary-button" onClick={() => void refresh()} disabled={loading}><RefreshCw size={15} className={loading ? "spin" : ""}/>{loading ? "Scanning…" : "Scan devices"}</button></div>
               <div className="device-meta"><span>{isApex3Tkl ? "Native SteelSeries HID · 8-zone RGB" : isHyperXHaste2 ? "HyperX 26K sensor · 61 g · tri-mode wireless" : isDexpGsCrush ? "PixArt PAW3311 · 50–22,000 DPI · tri-mode" : isDeathAdder ? "Native Razer HID · 100–6,400 DPI" : canChangeDpi ? "Native DPI control" : connected ? "Detection & side-button shortcuts" : "No device selected"}</span>{mouse?.vid && <code>{mouse.vid} / {mouse.pid}</code>}</div>
             </div>
             <div className="hero-visual"><div className="mouse-orbit"/>{connected ? <img src={deviceImage} alt={(mouse?.name || "Device")+", top view"}/> : <Mouse className="empty-mouse" strokeWidth={.7}/>}<span>{isApex3Tkl ? "APEX LIGHTING ONLINE" : isHyperXHaste2 ? "HASTE 2 WIRELESS ONLINE" : isSmartBuyAvatar ? "RUSH AVATAR ONLINE" : isDexpGsCrush ? "GS CRUSH ONLINE" : isDeathAdder ? "DEATHADDER ONLINE" : connected ? "READY WHEN YOU ARE" : "YOUR NEXT SETUP"}</span></div>
@@ -547,7 +565,7 @@ export default function App() {
           <div className="appearance-section"><h3>Liquid Glass</h3><p className="appearance-note">The glass layer is separate from the background, so you can reveal more or less of your image without changing its scale.</p><div className="glass-presets"><button className={glassMode === "regular" ? "selected" : ""} onClick={() => setGlassMode("regular")} type="button">Regular</button><button className={glassMode === "clear" ? "selected" : ""} onClick={() => setGlassMode("clear")} type="button">Clear</button></div><div className="glass-controls-grid"><label>UI transparency <b>{100-glassOpacity}%</b><input type="range" min="18" max="82" value={glassOpacity} onChange={e => setGlassOpacity(Number(e.target.value))}/></label><label>Glass blur <b>{glassBlur}px</b><input type="range" min="4" max="40" value={glassBlur} onChange={e => setGlassBlur(Number(e.target.value))}/></label><label>Glass tint <HexColor label="" value={glassTint} onChange={setGlassTint}/></label><label>Border strength <b>{glassBorder}%</b><input type="range" min="10" max="80" value={glassBorder} onChange={e => setGlassBorder(Number(e.target.value))}/></label><label>Corner radius <b>{glassRadius}px</b><input type="range" min="8" max="28" value={glassRadius} onChange={e => setGlassRadius(Number(e.target.value))}/></label></div></div>
           <div className="appearance-section"><h3>Interface scale</h3><div className="scale-row"><span>Layout</span><input aria-label="Interface layout scale" type="range" min="75" max="125" step="5" value={uiScale} onChange={e => setUiScale(Number(e.target.value))}/><b>{uiScale}%</b></div><div className="scale-row text-scale-control"><span>Text</span><input aria-label="Interface text scale" type="range" min="85" max="125" step="5" value={textScale} onChange={e => setTextScale(Number(e.target.value))}/><b>{textScale}%</b></div></div>
           <button className="reset-background" onClick={resetAppearance} type="button">Reset appearance</button>
-          <div className="appearance-section"><h3>Application</h3><label className="toggle-row"><span><strong>Keep running in the tray</strong><small>Closing the window keeps shortcuts active. Right-click the tray icon to fully quit.</small></span><input type="checkbox" checked={minimizeToTray} onChange={e => setMinimizeToTray(e.target.checked)}/></label><label className="toggle-row"><span><strong>Show other connected mouse devices</strong><small>Include generic pointing devices in detection.</small></span><input checked={showOtherDevices} onChange={e => setShowOtherDevices(e.target.checked)} type="checkbox"/></label><p className="settings-saved-note">Appearance and profile changes save automatically on this PC.</p></div>
+          <div className="appearance-section"><h3>Application</h3><label className="toggle-row"><span><strong>Start with Windows</strong><small>Launch quietly in the tray when you sign in.</small></span><input type="checkbox" checked={startWithWindows} onChange={e => void changeStartWithWindows(e.target.checked)}/></label><label className="toggle-row"><span><strong>Keep running in the tray</strong><small>Closing the window keeps shortcuts active. Right-click the tray icon to fully quit.</small></span><input type="checkbox" checked={minimizeToTray} onChange={e => setMinimizeToTray(e.target.checked)}/></label><label className="toggle-row"><span><strong>Show other connected mouse devices</strong><small>Include generic pointing devices in detection.</small></span><input checked={showOtherDevices} onChange={e => setShowOtherDevices(e.target.checked)} type="checkbox"/></label><p className="settings-saved-note">Appearance and profile changes save automatically on this PC.</p></div>
         </section>}
         </div>
       </main>

@@ -131,6 +131,55 @@ fn set_minimize_to_tray(enabled: bool, state: tauri::State<'_, TrayState>) {
     state.minimize_to_tray.store(enabled, Ordering::Relaxed);
 }
 
+const STARTUP_REGISTRY_KEY: &str = r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run";
+const STARTUP_VALUE_NAME: &str = "UnnamedEnhancements";
+
+#[tauri::command]
+fn get_start_with_windows() -> bool {
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("reg.exe")
+            .args(["query", STARTUP_REGISTRY_KEY, "/v", STARTUP_VALUE_NAME])
+            .output()
+            .map(|output| output.status.success())
+            .unwrap_or(false)
+    }
+    #[cfg(not(target_os = "windows"))]
+    { false }
+}
+
+#[tauri::command]
+fn set_start_with_windows(enabled: bool) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        let status = if enabled {
+            let executable = std::env::current_exe()
+                .map_err(|error| format!("Could not locate the app executable: {error}"))?;
+            let command = format!("\"{}\" --startup", executable.display());
+            Command::new("reg.exe")
+                .args(["add", STARTUP_REGISTRY_KEY, "/v", STARTUP_VALUE_NAME, "/t", "REG_SZ", "/d"])
+                .arg(command)
+                .args(["/f"])
+                .status()
+        } else {
+            Command::new("reg.exe")
+                .args(["delete", STARTUP_REGISTRY_KEY, "/v", STARTUP_VALUE_NAME, "/f"])
+                .status()
+        }
+        .map_err(|error| format!("Could not update Windows startup: {error}"))?;
+        if status.success() || (!enabled && !get_start_with_windows()) {
+            Ok(())
+        } else {
+            Err("Windows could not update the startup setting.".to_string())
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = enabled;
+        Err("Start with Windows is available on Windows only.".to_string())
+    }
+}
+
 #[tauri::command]
 fn test_button_action(action: String, target: Option<String>) -> Result<(), String> {
     #[cfg(target_os = "windows")]
@@ -576,13 +625,10 @@ fn download_latest_app(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 fn main() {
-    #[cfg(target_os = "windows")]
-    remap::start();
-
     tauri::Builder::default()
         .manage(TrayState { minimize_to_tray: AtomicBool::new(false) })
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![detect_devices, set_apex_rgb, set_apex_rainbow, inspect_dpi_hardware, get_x1_battery, get_dpi, set_dpi, set_minimize_to_tray, test_button_action, apply_button_mappings, download_latest_app])
+        .invoke_handler(tauri::generate_handler![detect_devices, set_apex_rgb, set_apex_rainbow, inspect_dpi_hardware, get_x1_battery, get_dpi, set_dpi, set_minimize_to_tray, get_start_with_windows, set_start_with_windows, test_button_action, apply_button_mappings, download_latest_app])
         .on_tray_icon_event(|tray, event| match event {
             TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } => {
                 if let Some(window) = tray.app_handle().get_webview_window("main") {
@@ -613,6 +659,11 @@ fn main() {
                 builder = builder.icon(icon);
             }
             builder.build(app)?;
+            if std::env::args_os().any(|argument| argument == "--startup") {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.hide();
+                }
+            }
             Ok(())
         })
         .run(tauri::generate_context!())
