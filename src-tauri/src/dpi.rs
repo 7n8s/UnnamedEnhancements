@@ -49,6 +49,8 @@ pub fn inspect_dpi_hardware() -> Result<Vec<HidDiagnostic>, String> {
                         || device.product_id() == WIRED_X1_PRODUCT_ID))
                 || (device.vendor_id() == WIRED_X1_VENDOR_ID
                     && WIRED_X1_PRODUCT_IDS.contains(&device.product_id()))
+                || (device.vendor_id() == DEXP_VENDOR_ID
+                    && DEXP_GS_CRUSH_PRODUCT_IDS.contains(&device.product_id()))
                 || product.contains("mouse")
                 || device.usage_page() == 0xffff
         })
@@ -173,44 +175,65 @@ fn set_dexp_gs_crush_dpi(product_id: u16, dpi: u16) -> Result<(), String> {
         .lock()
         .map_err(|_| "The GS Crush DPI writer could not be locked. Restart the app and try again.".to_string())?;
     let api = HidApi::new().map_err(|error| format!("Could not initialize HID: {error}"))?;
-    let path = api
+    let mut candidates = api
         .device_list()
-        .find(|device| {
+        .filter(|device| {
             device.vendor_id() == DEXP_VENDOR_ID
                 && device.product_id() == product_id
                 && device.interface_number() == CONFIG_INTERFACE
-                && device.usage_page() == 0x000b
         })
-        .or_else(|| {
-            api.device_list().find(|device| {
-                device.vendor_id() == DEXP_VENDOR_ID
-                    && device.product_id() == product_id
-                    && device.interface_number() == CONFIG_INTERFACE
-            })
+        .map(|device| {
+            let path = device.path().to_owned();
+            let windows_path = path.to_string_lossy().to_ascii_lowercase();
+            // On Windows the firmware's writable feature-report collection is
+            // COL04. Usage pages are not reported consistently across hidapi
+            // backends, so use them only as the secondary preference.
+            let score = if windows_path.contains("col04") {
+                2
+            } else if device.usage_page() == 0x000b {
+                1
+            } else {
+                0
+            };
+            (score, path)
         })
-        .map(|device| device.path().to_owned())
-        .ok_or_else(|| {
-            "The GS Crush control interface was not found. Use USB or the 2.4 GHz receiver, then reconnect the mouse and try again.".to_string()
-        })?;
+        .collect::<Vec<_>>();
+    candidates.sort_by(|left, right| right.0.cmp(&left.0));
+    if candidates.is_empty() {
+        return Err("The GS Crush control interface was not found. Use USB or the 2.4 GHz receiver, then reconnect the mouse and try again.".to_string());
+    }
 
-    let device = api
-        .open_path(&path)
-        .map_err(|error| format!("Could not open the GS Crush control interface: {error}"))?;
     let report = build_dexp_dpi_report(dpi);
     let payload = if product_id == DEXP_GS_CRUSH_WIRED_PRODUCT_ID {
         &report[..52]
     } else {
         &report[..]
     };
+    let candidate_count = candidates.len();
+    let mut errors = Vec::new();
+    for (_, path) in candidates {
+        let device = match api.open_path(&path) {
+            Ok(device) => device,
+            Err(error) => {
+                errors.push(format!("open: {error}"));
+                continue;
+            }
+        };
+        match device.send_feature_report(payload) {
+            Ok(_) => {
+                // The Beken firmware needs time to persist a profile packet
+                // before it will safely accept another command.
+                thread::sleep(Duration::from_millis(250));
+                return Ok(());
+            }
+            Err(error) => errors.push(format!("write: {error}")),
+        }
+    }
 
-    device
-        .send_feature_report(payload)
-        .map_err(|error| format!("Could not send the DPI profile to the GS Crush: {error}"))?;
-
-    // The Beken firmware needs time to persist a profile packet before it will
-    // safely accept another command.
-    thread::sleep(Duration::from_millis(250));
-    Ok(())
+    Err(format!(
+        "Could not send the DPI profile to any of the {candidate_count} GS Crush control collections: {}",
+        errors.join("; ")
+    ))
 }
 
 fn build_dexp_dpi_report(dpi: u16) -> [u8; DEXP_DPI_REPORT_LEN] {
