@@ -10,7 +10,7 @@ Download **UnnamedEnhancements.exe** from [Releases](https://github.com/7n8s/Unn
 
 - Compact icon rail and a device-first overview with connected status and quick DPI controls.
 - Physical-button selection, device-matched layouts, and Windows side-button shortcuts, including the HyperX Pulsefire Haste 2 Wireless.
-- Typed DPI, a slider, and presets for the Attack Shark X1 and Razer DeathAdder Essential.
+- Typed DPI, a slider, and presets for the DEXP GS Crush, Attack Shark X1, and Razer DeathAdder Essential.
 - SteelSeries Apex 3 TKL White detection with a dedicated eight-zone RGB studio, brightness control, and rainbow wave.
 - SmartBuy RUSH Avatar SBM-724G-W detection (`1BF8:0F99`) with dedicated artwork and side-button shortcuts.
 - Local profiles with manual switching, import, and export.
@@ -20,7 +20,7 @@ Download **UnnamedEnhancements.exe** from [Releases](https://github.com/7n8s/Unn
 
 ## Hardware boundaries
 
-Attack Shark X1 and Razer DeathAdder Essential (USB IDs `1532:006E`, `1532:0071`, and `1532:0098`) have hardware DPI control. SteelSeries Apex 3 TKL (`1038:1622`) has eight-zone RGB control through its vendor HID interface. DEXP GS Crush (`1D57:A001` wired and `1D57:A011` receiver), HyperX Pulsefire Haste 2 Wireless (`3554:FA09`, with legacy `03F0:0F98` compatibility), Logitech G304/G305, Glorious Model O Wired, and SmartBuy RUSH Avatar SBM-724G-W (`1BF8:0F99`) have detection support without native DPI control. The SmartBuy cycles its fixed 1200/1600/2400/3200 DPI presets internally with its physical button. Generic mouse detection is opt-in.
+DEXP GS Crush (`1D57:A001` receiver and `1D57:A011` wired), Attack Shark X1, and Razer DeathAdder Essential (USB IDs `1532:006E`, `1532:0071`, and `1532:0098`) have hardware DPI control. SteelSeries Apex 3 TKL (`1038:1622`) has eight-zone RGB control through its vendor HID interface. HyperX Pulsefire Haste 2 Wireless (`3554:FA09`, with legacy `03F0:0F98` compatibility), Logitech G304/G305, Glorious Model O Wired, and SmartBuy RUSH Avatar SBM-724G-W (`1BF8:0F99`) have detection support without native DPI control. The SmartBuy cycles its fixed 1200/1600/2400/3200 DPI presets internally with its physical button. Generic mouse detection is opt-in.
 
 Side-button shortcuts use a Windows hook while Unnamed runs and may affect other attached mice. Main buttons and the physical DPI button retain their native behavior. Apex lighting is applied live and may need to be reapplied after reconnecting the keyboard. Mouse polling and live battery controls remain absent because their protocols are not verified.
 

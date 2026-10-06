@@ -205,15 +205,13 @@ fn apply_known_mouse_identity(mouse: &mut DetectedDevice) {
         && matches!(mouse.pid.as_deref(), Some("0xa001") | Some("0xa011"))
     {
         // IDs recovered from DEXP's official GS Crush configuration utility.
-        // The app enumerates A001 directly and keeps A011 for its secondary
-        // receiver path. Keep this detection-only until a device diagnostic
-        // confirms the exact feature-report protocol used by the DEXP firmware.
+        // A001 is the 2.4 GHz USB receiver and A011 is the wired USB-C mode.
         mouse.name = "DEXP GS Crush".to_string();
         mouse.manufacturer = Some("DEXP".to_string());
         mouse.connection = if mouse.pid.as_deref() == Some("0xa001") {
-            "USB-C (wired)".to_string()
-        } else {
             "2.4 GHz receiver".to_string()
+        } else {
+            "USB-C (wired)".to_string()
         };
     } else if mouse.vid.as_deref() == Some("0x1bf8")
         && mouse.pid.as_deref() == Some("0x0f99")
@@ -298,8 +296,8 @@ mod device_identity_tests {
     #[test]
     fn recognises_dexp_gs_crush_wired_and_receiver_ids() {
         for (pid, connection) in [
-            ("0xa001", "USB-C (wired)"),
-            ("0xa011", "2.4 GHz receiver"),
+            ("0xa001", "2.4 GHz receiver"),
+            ("0xa011", "USB-C (wired)"),
         ] {
             let mut mouse = DetectedDevice {
                 id: format!("HID\\VID_1D57&PID_{}", &pid[2..].to_ascii_uppercase()),

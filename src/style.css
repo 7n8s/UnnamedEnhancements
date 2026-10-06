@@ -449,6 +449,11 @@ input:not([type=range]):not([type=checkbox]):not([type=color]),select,textarea{b
 .device-deathadder .hero-visual:before{border-color:rgba(84,255,137,.16);box-shadow:0 0 70px rgba(42,255,116,.055),inset 0 0 70px rgba(42,255,116,.025)}
 .device-deathadder .hero-visual>span{color:#6fff9e;text-shadow:0 0 20px rgba(55,255,121,.24)}
 .device-deathadder .status-pill{background:rgba(54,255,122,.075);border-color:rgba(77,255,138,.2)}
+.device-dexp .hero-visual{background:radial-gradient(circle at 50% 50%,rgba(75,164,255,.16),transparent 46%),linear-gradient(145deg,rgba(18,32,52,.42),transparent 65%)}
+.device-dexp .hero-visual:before{border-color:rgba(94,178,255,.17);box-shadow:0 0 70px rgba(56,151,255,.06),inset 0 0 70px rgba(56,151,255,.025)}
+.device-dexp .hero-visual>span{color:#80c8ff;text-shadow:0 0 20px rgba(69,164,255,.25)}
+.device-dexp .hero-visual img,.dexp-map .button-map-image{filter:contrast(1.08) brightness(1.2) drop-shadow(24px 30px 26px rgba(0,0,0,.48))}
+.device-dexp .status-pill{background:rgba(72,163,255,.08);border-color:rgba(92,177,255,.21)}
 .device-hyperx .hero-visual{background:radial-gradient(circle at 50% 48%,rgba(255,56,76,.15),transparent 46%),linear-gradient(145deg,rgba(49,13,20,.38),transparent 65%)}
 .device-hyperx .hero-visual:before{border-color:rgba(255,76,94,.18);box-shadow:0 0 72px rgba(255,49,70,.07),inset 0 0 70px rgba(255,49,70,.03)}
 .device-hyperx .hero-visual>span{color:#ff7b89;text-shadow:0 0 20px rgba(255,55,76,.28)}
