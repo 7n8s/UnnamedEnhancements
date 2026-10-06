@@ -3,9 +3,7 @@ use serde::Serialize;
 use std::{
     ffi::{c_void, CStr},
     fs::OpenOptions,
-    mem::zeroed,
     os::windows::{fs::OpenOptionsExt, io::AsRawHandle},
-    ptr::null_mut,
     sync::Mutex,
     thread,
     time::Duration,
@@ -18,10 +16,9 @@ const WIRED_X1_PRODUCT_IDS: [u16; 2] = [0xfa60, 0xfa65];
 const WIRED_X1_PRODUCT_ID: u16 = 0x5032;
 const DEXP_VENDOR_ID: u16 = 0x1d57;
 const DEXP_GS_CRUSH_PRODUCT_IDS: [u16; 2] = [0xa001, 0xa011];
-const DEXP_GS_CRUSH_WIRED_PRODUCT_ID: u16 = 0xa011;
 const DEXP_DPI_MIN: u16 = 50;
 const DEXP_DPI_MAX: u16 = 22_000;
-const DEXP_DPI_REPORT_LEN: usize = 56;
+const DEXP_DPI_REPORT_LEN: usize = 60;
 const HID_FEATURE_DATA_LEN: usize = 64;
 const CONFIG_INTERFACE: i32 = 2;
 const RAZER_VENDOR_ID: u16 = 0x1532;
@@ -33,37 +30,9 @@ const RAZER_DPI_MAX: u16 = 6_400;
 static DEXP_WRITE_LOCK: Mutex<()> = Mutex::new(());
 const FILE_SHARE_READ: u32 = 0x0000_0001;
 const FILE_SHARE_WRITE: u32 = 0x0000_0002;
-const HIDP_STATUS_SUCCESS: i32 = 0x0011_0000;
-
-#[repr(C)]
-#[derive(Default)]
-struct HidpCaps {
-    usage: u16,
-    usage_page: u16,
-    input_report_byte_length: u16,
-    output_report_byte_length: u16,
-    feature_report_byte_length: u16,
-    reserved: [u16; 17],
-    number_link_collection_nodes: u16,
-    number_input_button_caps: u16,
-    number_input_value_caps: u16,
-    number_input_data_indices: u16,
-    number_output_button_caps: u16,
-    number_output_value_caps: u16,
-    number_output_data_indices: u16,
-    number_feature_button_caps: u16,
-    number_feature_value_caps: u16,
-    number_feature_data_indices: u16,
-}
 
 #[link(name = "hid")]
 extern "system" {
-    fn HidD_GetPreparsedData(
-        hid_device_object: *mut c_void,
-        preparsed_data: *mut *mut c_void,
-    ) -> u8;
-    fn HidD_FreePreparsedData(preparsed_data: *mut c_void) -> u8;
-    fn HidP_GetCaps(preparsed_data: *const c_void, capabilities: *mut HidpCaps) -> i32;
     fn HidD_SetFeature(
         hid_device_object: *mut c_void,
         report_buffer: *const c_void,
@@ -236,7 +205,9 @@ fn set_dexp_gs_crush_dpi(product_id: u16, dpi: u16) -> Result<(), String> {
             // On Windows the firmware's writable feature-report collection is
             // COL04. Usage pages are not reported consistently across hidapi
             // backends, so use them only as the secondary preference.
-            let score = if windows_path.contains("col04") {
+            let score = if device.usage_page() == 0xff02 && device.usage() == 0x0002 {
+                3
+            } else if windows_path.contains("col04") {
                 2
             } else if device.usage_page() == 0x000b {
                 1
@@ -252,22 +223,14 @@ fn set_dexp_gs_crush_dpi(product_id: u16, dpi: u16) -> Result<(), String> {
     }
 
     let report = build_dexp_dpi_report(dpi);
-    let payload = if product_id == DEXP_GS_CRUSH_WIRED_PRODUCT_ID {
-        &report[..52]
-    } else {
-        &report[..]
-    };
     let candidate_count = candidates.len();
     let mut errors = Vec::new();
     for (_, path) in candidates {
-        match send_padded_windows_feature_report(&path, payload) {
-            Ok(report_length) => {
+        match send_windows_feature_report(&path, &report) {
+            Ok(()) => {
                 // The Beken firmware needs time to persist a profile packet
                 // before it will safely accept another command.
                 thread::sleep(Duration::from_millis(250));
-                eprintln!(
-                    "GS Crush DPI profile sent as a {report_length}-byte Windows feature report"
-                );
                 return Ok(());
             }
             Err(error) => errors.push(error),
@@ -280,19 +243,7 @@ fn set_dexp_gs_crush_dpi(product_id: u16, dpi: u16) -> Result<(), String> {
     ))
 }
 
-struct PreparsedData(*mut c_void);
-
-impl Drop for PreparsedData {
-    fn drop(&mut self) {
-        if !self.0.is_null() {
-            // SAFETY: the pointer is returned by HidD_GetPreparsedData for the
-            // lifetime of this guard and is released exactly once here.
-            unsafe { HidD_FreePreparsedData(self.0) };
-        }
-    }
-}
-
-fn send_padded_windows_feature_report(path: &CStr, payload: &[u8]) -> Result<usize, String> {
+fn send_windows_feature_report(path: &CStr, report: &[u8]) -> Result<(), String> {
     let path = path
         .to_str()
         .map_err(|_| "The GS Crush HID path is not valid UTF-8.".to_string())?;
@@ -303,40 +254,9 @@ fn send_padded_windows_feature_report(path: &CStr, payload: &[u8]) -> Result<usi
         .open(path)
         .map_err(|error| format!("open: {error}"))?;
     let handle = file.as_raw_handle();
-    let mut preparsed = null_mut();
-
-    // SAFETY: handle is an open HID file handle and preparsed points to valid
-    // storage for the pointer allocated by Windows.
-    if unsafe { HidD_GetPreparsedData(handle, &mut preparsed) } == 0 {
-        return Err(format!(
-            "read feature-report capabilities: {}",
-            std::io::Error::last_os_error()
-        ));
-    }
-    let preparsed = PreparsedData(preparsed);
-    // SAFETY: Windows initialized the preparsed data above, and caps is a
-    // correctly laid-out HIDP_CAPS output buffer.
-    let mut caps: HidpCaps = unsafe { zeroed() };
-    let status = unsafe { HidP_GetCaps(preparsed.0, &mut caps) };
-    if status != HIDP_STATUS_SUCCESS {
-        return Err(format!("read HID capabilities: status 0x{status:08x}"));
-    }
-
-    let report_length = usize::from(caps.feature_report_byte_length);
-    if report_length < payload.len() || report_length > 4096 {
-        return Err(format!(
-            "invalid Windows feature-report length {report_length} for a {}-byte DPI packet",
-            payload.len()
-        ));
-    }
-    let mut report = vec![0_u8; report_length];
-    report[..payload.len()].copy_from_slice(payload);
-
-    // DEXP's bundled hidapi performs this same full-length zero-padding before
-    // HidD_SetFeature. Windows rejects the shorter protocol packet with error
-    // 87 even though the mouse itself only consumes its first 56 bytes.
-    // SAFETY: handle remains open and report is a valid buffer of the exact
-    // FeatureReportByteLength returned by HidP_GetCaps.
+    // DEXP's vendor DLL opens the FF02/usage-2 collection with read/write
+    // sharing and passes its native 60-byte report directly to HidD_SetFeature.
+    // SAFETY: handle remains open and report is a valid 60-byte buffer.
     if unsafe {
         HidD_SetFeature(
             handle,
@@ -348,22 +268,23 @@ fn send_padded_windows_feature_report(path: &CStr, payload: &[u8]) -> Result<usi
         return Err(format!("write: {}", std::io::Error::last_os_error()));
     }
 
-    Ok(report_length)
+    Ok(())
 }
 
 fn build_dexp_dpi_report(dpi: u16) -> [u8; DEXP_DPI_REPORT_LEN] {
-    // GS Crush uses the same PAW3311/Beken profile format as the Attack Shark
-    // X11. Preserve its standard stages and replace stage 1, then select it so
-    // the requested DPI takes effect immediately.
+    // Recovered from DEXP's official GS_Crush.exe. Its PAW3311 profile resembles
+    // the X11 layout, but uses report ID 0x14, a 60-byte packet, indicator 0x01,
+    // and the FF02/usage-2 vendor collection.
     let mut report = [
-        0x04, 0x38, 0x01, 0x00, 0x01, 0x3f, 0x20, 0x20,
+        0x14, 0x3c, 0x01, 0x00, 0x01, 0x3f, 0x20, 0x20,
         0x12, 0x25, 0x38, 0x4b, 0x75, 0x81, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00,
         0x01,
         0xff, 0x00, 0x00, 0x00, 0xff, 0x00, 0x00, 0x00, 0xff,
         0xff, 0xff, 0x00, 0x00, 0xff, 0xff, 0xff, 0x00, 0xff,
         0xff, 0x40, 0x00, 0xff, 0xff, 0xff,
-        0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00,
     ];
     let (x, y, doubled) = encode_dexp_dpi(dpi);
     report[8] = x;
@@ -609,11 +530,12 @@ mod tests {
     #[test]
     fn builds_gs_crush_dpi_profile() {
         let report = build_dexp_dpi_report(800);
-        assert_eq!(report.len(), 56);
-        assert_eq!(&report[..8], &[0x04, 0x38, 0x01, 0x00, 0x01, 0x3f, 0x20, 0x20]);
+        assert_eq!(report.len(), 60);
+        assert_eq!(&report[..8], &[0x14, 0x3c, 0x01, 0x00, 0x01, 0x3f, 0x20, 0x20]);
         assert_eq!(report[8], 0x12);
         assert_eq!(report[16], 0x00);
         assert_eq!(report[24], 0x01);
+        assert_eq!(report[49], 0x01);
         let expected = report[3..=49].iter().fold(0_u16, |sum, byte| sum + u16::from(*byte));
         assert_eq!(&report[50..52], &expected.to_be_bytes());
     }
