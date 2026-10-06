@@ -5,6 +5,7 @@ Version 0.5.6 keeps the app completely out of the live mouse-input path unless a
 - Removes the always-on global mouse hook that could cause tiny cursor stalls in latency-sensitive games such as osu!.
 - Installs the side-button hook only while a custom M4/M5 action is active, and removes it again when those actions are reset.
 - Removes side-button customisation entirely for the GS Crush and guarantees that selecting it disables the global mouse hook.
+- Gives the GS Crush a lean DPI-only interface: Overview, DPI, support, and app settings, with profiles, remapping, shortcut counters, and the mouse tester removed from its mode.
 - Stops resending the saved DPI automatically when the app opens or merely detects the mouse; DPI writes now happen only after an explicit change or profile switch.
 - Adds a **Start with Windows** option under Appearance → Application. Startup launches quietly in the system tray.
 - Recognises the GS Crush through `1D57:A001` in 2.4 GHz receiver mode and `1D57:A011` in wired USB-C mode.
