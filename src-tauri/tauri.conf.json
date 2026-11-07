@@ -1,25 +1,27 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Unnamed Desktop App",
-  "version": "0.1.0",
+  "version": "0.5.8",
   "identifier": "com.notlimited.unnameddesktopapp",
   "build": {
     "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build",
-    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "npm run build:app",
+    "devUrl": "http://localhost:1420",
     "frontendDist": "../dist"
   },
   "app": {
     "windows": [
       {
-        "title": "Unnamed Desktop App",
-        "width": 1000,
-        "height": 700
+        "title": "Unnamed Enhancements",
+        "width": 1180,
+        "height": 820,
+        "minWidth": 800,
+        "minHeight": 600
       }
     ]
   },
   "bundle": {
-    "active": true,
+    "active": false,
     "targets": "all",
     "icon": [
       "icons/icon.ico"
