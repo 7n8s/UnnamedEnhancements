@@ -1,6 +1,39 @@
-# Unnamed Windows Desktop App
-A mouse software you can use without the hassle.
+# Unnamed Enhancements
 
-Which mouse do you use? Doesn't matter, we support it.
+A focused Windows workspace for your mouse and keyboard, rebuilt as a compact command center with cooler glass, sharper typography, and device-first controls.
 
-Less clutter in your funky, weird, rgb filled mouse app, invest in your comfort of life and invest in Unnamed Enhancements, the only mouse software you'll ever need. 
+## Download
+
+Download **UnnamedEnhancements.exe** from [Releases](https://github.com/7n8s/UnnamedEnhancements/releases/latest). Save it to a permanent folder and launch it directly; the release executable does not need ZIP extraction. Windows may show a security prompt for an unsigned app. Microsoft Edge WebView2 is required.
+
+## What's inside
+
+- Compact icon rail and a device-first overview with connected status and quick DPI controls.
+- Physical-button selection, device-matched layouts, and Windows side-button shortcuts, including the HyperX Pulsefire Haste 2 Wireless.
+- Typed DPI, a slider, and presets for the DEXP GS Crush, Attack Shark X1, and Razer DeathAdder Essential.
+- SteelSeries Apex 3 TKL White detection with a dedicated eight-zone RGB studio, brightness control, and rainbow wave.
+- SmartBuy RUSH Avatar SBM-724G-W detection (`1BF8:0F99`) with dedicated artwork and side-button shortcuts.
+- Local profiles with manual switching, import, and export.
+- Mouse input tester and read-only HID diagnostics.
+- Optional Serx assistant using a local Ollama installation.
+- Custom colours, layered liquid glass, high-quality images/GIFs, scaling, spacing, and reduced motion.
+
+## Hardware boundaries
+
+DEXP GS Crush (`1D57:A001` receiver and `1D57:A011` wired), Attack Shark X1, and Razer DeathAdder Essential (USB IDs `1532:006E`, `1532:0071`, and `1532:0098`) have hardware DPI control. SteelSeries Apex 3 TKL (`1038:1622`) has eight-zone RGB control through its vendor HID interface. HyperX Pulsefire Haste 2 Wireless (`3554:FA09`, with legacy `03F0:0F98` compatibility), Logitech G304/G305, Glorious Model O Wired, and SmartBuy RUSH Avatar SBM-724G-W (`1BF8:0F99`) have detection support without native DPI control. The SmartBuy cycles its fixed 1200/1600/2400/3200 DPI presets internally with its physical button. Generic mouse detection is opt-in.
+
+Side-button shortcuts use a Windows hook while Unnamed runs and may affect other attached mice. Main buttons and the physical DPI button retain their native behavior. Apex lighting is applied live and may need to be reapplied after reconnecting the keyboard. Mouse polling and live battery controls remain absent because their protocols are not verified.
+
+## Development
+
+Install Node.js and the Rust/Tauri Windows prerequisites, then run:
+
+```powershell
+npm.cmd install
+npm.cmd run tauri dev
+npm.cmd run build:app
+```
+
+For hardware-free design testing, run `npm.cmd run dev` and open `http://localhost:1420/?demo=x1`. Use `demo=apex`, `demo=hyperx`, `demo=deathadder`, `demo=g305`, or `demo=empty` for other supported and disconnected states. This fixture is clearly labelled, mocks native commands, and is excluded from production.
+
+Serx requires Ollama running locally and `ollama pull qwen2.5:3b-instruct`. It cannot change mouse settings for you.

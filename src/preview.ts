@@ -1,0 +1,32 @@
+import { mockIPC } from "@tauri-apps/api/mocks";
+
+/** Development-only visual QA. No USB access, downloads, or model requests. */
+export function setupPreview() {
+  const mode = new URLSearchParams(location.search).get("demo");
+  const empty = mode === "empty";
+  const logitech = mode === "g305";
+  const deathadder = mode === "deathadder";
+  const hyperx = mode === "hyperx";
+  const smartbuy = mode === "smartbuy";
+  const dexp = mode === "dexp";
+  const apex = mode === "apex";
+  const notice = document.createElement("div");
+  notice.textContent = "Design preview · simulated device";
+  notice.style.cssText = "position:fixed;bottom:3px;right:14px;z-index:100;font:10px system-ui;color:#b7a17b;pointer-events:none";
+  document.body.append(notice);
+  mockIPC(async (command, args) => {
+    console.info("[preview IPC]", command, JSON.stringify(args));
+    switch (command) {
+      case "detect_devices": {
+        if (empty) return [];
+        const selected = { id: "preview-device", name: hyperx ? "HyperX Pulsefire Haste 2 Wireless" : smartbuy ? "SmartBuy RUSH Avatar SBM-724G-W" : dexp ? "DEXP GS Crush" : deathadder ? "Razer DeathAdder Essential" : logitech ? "Logitech G305" : "Attack Shark X1", manufacturer: hyperx ? "HyperX" : smartbuy ? "SmartBuy" : dexp ? "DEXP" : deathadder ? "Razer" : logitech ? "Logitech" : "Attack Shark", vid: hyperx ? "0x3554" : smartbuy ? "0x1bf8" : dexp ? "0x1d57" : deathadder ? "0x1532" : logitech ? "0x046d" : "0x3151", pid: hyperx ? "0xfa09" : smartbuy ? "0x0f99" : dexp ? "0xa001" : deathadder ? "0x006e" : logitech ? "0xc53f" : "0x5031", connection: hyperx ? "USB-C / 2.4 GHz receiver" : dexp ? "2.4 GHz receiver" : smartbuy || deathadder ? "Wired USB" : "USB", connected: true, deviceKind: "mouse" };
+        return apex ? [{ id: "preview-apex", name: "SteelSeries Apex 3 TKL White", manufacturer: "SteelSeries", vid: "0x1038", pid: "0x1622", connection: "Wired USB", connected: true, deviceKind: "keyboard" }, selected] : [selected];
+      }
+      case "set_dpi": case "set_apex_rgb": case "set_apex_rainbow": case "apply_button_mappings": case "set_minimize_to_tray": case "set_start_with_windows": return;
+      case "get_start_with_windows": return false;
+      case "inspect_dpi_hardware": return [{ preview: true, interfaceNumber: 2, usagePage: "0xffff", note: "Simulated read-only diagnostic" }];
+      case "test_button_action": return;
+      default: throw new Error("Preview command not supported: " + command);
+    }
+  });
+}
